@@ -1,0 +1,22 @@
+{
+  "name": "connectghin",
+  "private": true,
+  "workspaces": [
+    "apps/api",
+    "apps/admin"
+  ],
+  "scripts": {
+    "api:dev": "npm run start:dev -w @connectghin/api",
+    "api:build": "npm run build -w @connectghin/api",
+    "api:prisma:generate": "npm run prisma:generate -w @connectghin/api",
+    "api:prisma:migrate": "npm run prisma:migrate -w @connectghin/api",
+    "api:prisma:seed": "npm run prisma:seed -w @connectghin/api",
+    "admin:dev": "npm run dev -w @connectghin/admin",
+    "admin:build": "npm run build -w @connectghin/admin",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

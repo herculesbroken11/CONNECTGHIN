@@ -1,0 +1,55 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: connectghin
+      POSTGRES_PASSWORD: connectghin
+      POSTGRES_DB: connectghin
+    ports:
+      - "5432:5432"
+    volumes:
+      - connectghin_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U connectghin -d connectghin"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://connectghin:connectghin@postgres:5432/connectghin?schema=public
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: production
+      API_PORT: "3000"
+      API_GLOBAL_PREFIX: api/v1
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-change-me-access-min-32-characters-long!!}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change-me-refresh-min-32-characters-long!!}
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL:-http://localhost:3000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3001}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - api_uploads:/app/uploads
+    command: ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
+
+volumes:
+  connectghin_pg:
+  api_uploads:
