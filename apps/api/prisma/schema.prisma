@@ -89,6 +89,7 @@ model User {
   suspensionReason String?
   resetTokenHash   String?
   resetTokenExp    DateTime?
+  refreshTokenVersion Int       @default(0)
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
   lastLoginAt      DateTime?

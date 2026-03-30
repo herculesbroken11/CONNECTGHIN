@@ -62,7 +62,12 @@ export class AuthService {
       },
     });
 
-    const tokens = await this.issueTokens(user.id, user.email, user.role);
+    const tokens = await this.issueTokens(
+      user.id,
+      user.email,
+      user.role,
+      user.refreshTokenVersion,
+    );
     return { user: this.sanitizeUser(user), ...tokens };
   }
 
@@ -86,7 +91,12 @@ export class AuthService {
       data: { lastLoginAt: new Date() },
     });
 
-    const tokens = await this.issueTokens(user.id, user.email, user.role);
+    const tokens = await this.issueTokens(
+      user.id,
+      user.email,
+      user.role,
+      user.refreshTokenVersion,
+    );
     return { user: this.sanitizeUser(user), ...tokens };
   }
 
@@ -106,8 +116,27 @@ export class AuthService {
     if (!user || !user.isActive || user.isSuspended) {
       throw new UnauthorizedException('Account unavailable');
     }
+    if (
+      payload.rtv == null ||
+      payload.rtv !== user.refreshTokenVersion
+    ) {
+      throw new UnauthorizedException('Refresh token revoked');
+    }
 
-    return this.issueTokens(user.id, user.email, user.role);
+    return this.issueTokens(
+      user.id,
+      user.email,
+      user.role,
+      user.refreshTokenVersion,
+    );
+  }
+
+  async logout(userId: string) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { refreshTokenVersion: { increment: 1 } },
+    });
+    return { ok: true };
   }
 
   async me(userId: string) {
@@ -165,13 +194,24 @@ export class AuthService {
         passwordHash,
         resetTokenHash: null,
         resetTokenExp: null,
+        refreshTokenVersion: { increment: 1 },
       },
     });
     return { ok: true };
   }
 
-  private async issueTokens(sub: string, email: string, role: UserRole) {
-    const payload: JwtPayload = { sub, email, role };
+  private async issueTokens(
+    sub: string,
+    email: string,
+    role: UserRole,
+    refreshTokenVersion?: number,
+  ) {
+    const payload: JwtPayload = {
+      sub,
+      email,
+      role,
+      rtv: refreshTokenVersion ?? 0,
+    };
     const accessExpires =
       this.config.get<string>('JWT_ACCESS_EXPIRES_IN') ?? '15m';
     const refreshExpires =

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:connectghin/core/notifications/push_notifications_service.dart';
-import 'package:connectghin/core/network/providers.dart';
 import 'package:connectghin/features/auth/application/auth_providers.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -29,7 +28,7 @@ class SettingsScreen extends ConsumerWidget {
             title: const Text('Log out'),
             onTap: () async {
               await ref.read(pushNotificationsServiceProvider).unregisterCurrentToken();
-              await ref.read(tokenStoreProvider).clear();
+              await ref.read(authRepositoryProvider).logout();
               await ref.read(pushNotificationsServiceProvider).stop();
               await ref.read(authSessionProvider).setAuthenticated(false);
               if (context.mounted) context.go('/login');

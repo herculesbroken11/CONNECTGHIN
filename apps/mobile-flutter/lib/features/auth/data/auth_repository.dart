@@ -28,7 +28,15 @@ class AuthRepository {
     await _dio.post('/auth/forgot-password', data: dto.toJson());
   }
 
-  Future<void> logout() => _tokens.clear();
+  Future<void> logout() async {
+    try {
+      await _dio.post('/auth/logout');
+    } catch (_) {
+      // Best effort on network/API errors.
+    } finally {
+      await _tokens.clear();
+    }
+  }
 
   Future<void> _saveTokensFromResponse(Map<String, dynamic>? data) async {
     if (data == null) throw StateError('Empty response');

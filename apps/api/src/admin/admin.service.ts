@@ -36,6 +36,7 @@ export class AdminService {
       sub: user.id,
       email: user.email,
       role: user.role,
+      rtv: user.refreshTokenVersion,
     };
     const accessExpires =
       this.config.get<string>('JWT_ACCESS_EXPIRES_IN') ?? '15m';

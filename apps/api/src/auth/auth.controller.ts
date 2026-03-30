@@ -25,10 +25,9 @@ export class AuthController {
     return this.auth.login(dto);
   }
 
-  @Public()
   @Post('logout')
-  logout() {
-    return { ok: true };
+  logout(@CurrentUser() user: JwtPayload) {
+    return this.auth.logout(user.sub);
   }
 
   @Public()
