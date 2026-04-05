@@ -6,6 +6,8 @@ import { join } from 'path';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ConfigService } from '@nestjs/config';
+import { buildCorsOrigin } from './config/cors.util';
+import { SocketIoAdapter } from './chat/socket-io.adapter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -19,6 +21,8 @@ async function bootstrap() {
   const globalPrefix = config.get<string>('API_GLOBAL_PREFIX', 'api/v1');
   app.setGlobalPrefix(globalPrefix);
 
+  app.useWebSocketAdapter(new SocketIoAdapter(app));
+
   app.use(helmet());
   app.useGlobalPipes(
     new ValidationPipe({
@@ -30,12 +34,9 @@ async function bootstrap() {
   );
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  const origins = (config.get<string>('CORS_ORIGINS') ?? '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const origin = buildCorsOrigin(config);
   app.enableCors({
-    origin: origins.length ? origins : true,
+    origin,
     credentials: true,
   });
 

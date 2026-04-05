@@ -8,7 +8,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
-import { randomBytes } from 'crypto';
+import { randomBytes, randomUUID } from 'crypto';
 import { PrismaService } from '@/prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -30,9 +30,10 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
+    const usernameNorm = dto.username.toLowerCase();
     const existing = await this.prisma.user.findFirst({
       where: {
-        OR: [{ email: dto.email.toLowerCase() }, { username: dto.username }],
+        OR: [{ email: dto.email.toLowerCase() }, { username: usernameNorm }],
       },
     });
     if (existing) {
@@ -49,7 +50,7 @@ export class AuthService {
         passwordHash,
         firstName: dto.firstName,
         lastName: dto.lastName,
-        username: dto.username,
+        username: usernameNorm,
         role: UserRole.USER,
         membershipType: MembershipType.FREE,
         membershipStatus: MembershipStatus.NONE,
@@ -155,45 +156,56 @@ export class AuthService {
     if (!user) {
       return { ok: true };
     }
-    const raw = randomBytes(32).toString('hex');
-    const resetTokenHash = await bcrypt.hash(raw, 10);
+    const selector = randomUUID();
+    const secret = randomBytes(32).toString('hex');
+    const resetTokenHash = await bcrypt.hash(secret, 10);
     const exp = new Date(Date.now() + 60 * 60 * 1000);
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { resetTokenHash, resetTokenExp: exp },
+      data: {
+        resetTokenSelector: selector,
+        resetTokenHash,
+        resetTokenExp: exp,
+      },
     });
+    const composite = `${selector}.${secret}`;
     if (this.config.get('NODE_ENV') !== 'production') {
       this.logger.warn(
-        `Password reset token for ${email} (dev only): ${raw}`,
+        `Password reset token for ${email} (dev only): ${composite}`,
       );
     }
     return { ok: true };
   }
 
   async resetPassword(token: string, newPassword: string) {
-    const users = await this.prisma.user.findMany({
-      where: {
-        resetTokenHash: { not: null },
-        resetTokenExp: { gt: new Date() },
-      },
-    });
-    let matchedId: string | null = null;
-    for (const u of users) {
-      if (u.resetTokenHash && (await bcrypt.compare(token, u.resetTokenHash))) {
-        matchedId = u.id;
-        break;
-      }
+    const dot = token.indexOf('.');
+    if (dot <= 0 || dot === token.length - 1) {
+      throw new BadRequestException('Invalid or expired token');
     }
-    if (!matchedId) {
+    const selector = token.slice(0, dot);
+    const secret = token.slice(dot + 1);
+    const user = await this.prisma.user.findUnique({
+      where: { resetTokenSelector: selector },
+    });
+    if (
+      !user?.resetTokenHash ||
+      !user.resetTokenExp ||
+      user.resetTokenExp <= new Date()
+    ) {
+      throw new BadRequestException('Invalid or expired token');
+    }
+    const ok = await bcrypt.compare(secret, user.resetTokenHash);
+    if (!ok) {
       throw new BadRequestException('Invalid or expired token');
     }
     const passwordHash = await bcrypt.hash(newPassword, 12);
     await this.prisma.user.update({
-      where: { id: matchedId },
+      where: { id: user.id },
       data: {
         passwordHash,
         resetTokenHash: null,
         resetTokenExp: null,
+        resetTokenSelector: null,
         refreshTokenVersion: { increment: 1 },
       },
     });

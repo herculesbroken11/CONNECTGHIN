@@ -27,15 +27,23 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         role: true,
         isActive: true,
         isSuspended: true,
+        refreshTokenVersion: true,
       },
     });
     if (!user || !user.isActive || user.isSuspended) {
       throw new UnauthorizedException('Account unavailable');
     }
+    if (
+      payload.rtv == null ||
+      payload.rtv !== user.refreshTokenVersion
+    ) {
+      throw new UnauthorizedException('Token revoked');
+    }
     return {
       sub: user.id,
       email: user.email,
       role: user.role,
+      rtv: user.refreshTokenVersion,
     };
   }
 }

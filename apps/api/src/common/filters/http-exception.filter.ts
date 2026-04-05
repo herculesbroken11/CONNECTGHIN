@@ -36,6 +36,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
       }
     } else if (exception instanceof Error) {
       this.logger.error(exception.stack ?? exception.message);
+    } else {
+      this.logger.error(
+        `Non-Error exception: ${typeof exception} ${String(exception)}`,
+      );
     }
 
     const payload = {

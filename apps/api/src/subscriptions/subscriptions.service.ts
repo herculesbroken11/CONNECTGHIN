@@ -1,6 +1,7 @@
 import {
   Injectable,
   BadRequestException,
+  InternalServerErrorException,
   Logger,
   NotFoundException,
   RawBodyRequest,
@@ -176,51 +177,62 @@ export class SubscriptionsService {
 
     let logUserId: string | null = null;
 
-    switch (event.type) {
-      case 'checkout.session.completed': {
-        const session = event.data.object as Stripe.Checkout.Session;
-        logUserId = session.metadata?.userId ?? null;
-        const sid = session.subscription;
-        if (typeof sid === 'string' && logUserId) {
-          await this.syncSubscriptionFromStripe(logUserId, sid);
+    try {
+      switch (event.type) {
+        case 'checkout.session.completed': {
+          const session = event.data.object as Stripe.Checkout.Session;
+          logUserId = session.metadata?.userId ?? null;
+          const sid = session.subscription;
+          if (typeof sid === 'string' && logUserId) {
+            await this.syncSubscriptionFromStripe(logUserId, sid);
+          }
+          break;
         }
-        break;
+        case 'customer.subscription.updated':
+        case 'customer.subscription.deleted': {
+          const sub = event.data.object as Stripe.Subscription;
+          const row = await this.prisma.subscription.findUnique({
+            where: { stripeSubscriptionId: sub.id },
+          });
+          logUserId =
+            row?.userId ??
+            (sub.metadata?.userId as string | undefined) ??
+            null;
+          if (!logUserId && typeof sub.customer === 'string') {
+            logUserId = await this.userIdFromStripeCustomer(stripe, sub.customer);
+          }
+          if (logUserId) {
+            await this.syncSubscriptionFromStripe(logUserId, sub.id);
+          } else {
+            this.logger.warn(
+              `Stripe subscription ${sub.id}: could not resolve user; skipping sync`,
+            );
+          }
+          break;
+        }
+        default:
+          break;
       }
-      case 'customer.subscription.updated':
-      case 'customer.subscription.deleted': {
-        const sub = event.data.object as Stripe.Subscription;
-        const row = await this.prisma.subscription.findUnique({
-          where: { stripeSubscriptionId: sub.id },
-        });
-        logUserId =
-          row?.userId ??
-          (sub.metadata?.userId as string | undefined) ??
-          null;
-        if (!logUserId && typeof sub.customer === 'string') {
-          logUserId = await this.userIdFromStripeCustomer(stripe, sub.customer);
-        }
-        if (logUserId) {
-          await this.syncSubscriptionFromStripe(logUserId, sub.id);
-        } else {
-          this.logger.warn(
-            `Stripe subscription ${sub.id}: could not resolve user; skipping sync`,
-          );
-        }
-        break;
-      }
-      default:
-        break;
-    }
 
-    if (logUserId) {
-      await this.prisma.paymentEvent.create({
-        data: {
-          userId: logUserId,
-          stripeEventId: event.id,
-          eventType: event.type,
-          payloadJson: JSON.stringify(event),
-        },
-      });
+      if (logUserId) {
+        await this.prisma.paymentEvent.create({
+          data: {
+            userId: logUserId,
+            stripeEventId: event.id,
+            eventType: event.type,
+            payloadJson: JSON.stringify(event),
+          },
+        });
+      }
+    } catch (err) {
+      if (err instanceof BadRequestException || err instanceof NotFoundException) {
+        throw err;
+      }
+      this.logger.error(
+        `Stripe webhook processing failed for ${event.id}: ${(err as Error).message}`,
+        (err as Error).stack,
+      );
+      throw new InternalServerErrorException('Webhook processing failed');
     }
 
     return { received: true };

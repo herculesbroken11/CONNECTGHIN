@@ -30,7 +30,9 @@ export class AdminService {
     }
     const match = await bcrypt.compare(dto.password, user.passwordHash);
     if (!match) throw new UnauthorizedException('Invalid credentials');
-    if (!user.isActive) throw new UnauthorizedException('Account unavailable');
+    if (!user.isActive || user.isSuspended) {
+      throw new UnauthorizedException('Account unavailable');
+    }
 
     const payload: JwtPayload = {
       sub: user.id,

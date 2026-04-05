@@ -23,10 +23,7 @@ export type ChatMessagePayload = {
   messageType: string;
 };
 
-@WebSocketGateway({
-  namespace: '/chat',
-  cors: { origin: true, credentials: true },
-})
+@WebSocketGateway({ namespace: '/chat' })
 export class ChatGateway implements OnGatewayInit {
   private readonly logger = new Logger(ChatGateway.name);
 
@@ -40,7 +37,7 @@ export class ChatGateway implements OnGatewayInit {
   ) {}
 
   afterInit(server: Server) {
-    server.use((socket, next) => {
+    server.use(async (socket, next) => {
       try {
         const raw =
           (socket.handshake.auth as { token?: string })?.token ??
@@ -52,6 +49,24 @@ export class ChatGateway implements OnGatewayInit {
         const payload = this.jwt.verify<JwtPayload>(token, {
           secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
         });
+        const user = await this.prisma.user.findUnique({
+          where: { id: payload.sub },
+          select: {
+            id: true,
+            isActive: true,
+            isSuspended: true,
+            refreshTokenVersion: true,
+          },
+        });
+        if (!user?.isActive || user.isSuspended) {
+          return next(new Error('Unauthorized'));
+        }
+        if (
+          payload.rtv == null ||
+          payload.rtv !== user.refreshTokenVersion
+        ) {
+          return next(new Error('Unauthorized'));
+        }
         socket.data.userId = payload.sub;
         return next();
       } catch (e) {

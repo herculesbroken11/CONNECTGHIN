@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:connectghin/core/util/api_error_message.dart';
 import 'package:connectghin/core/util/media_url.dart';
 import 'package:connectghin/features/app/data/app_repositories_provider.dart';
+import 'package:connectghin/features/discovery/domain/discovery_candidate.dart';
 
 class GhinderScreen extends ConsumerStatefulWidget {
   const GhinderScreen({super.key});
@@ -11,7 +13,7 @@ class GhinderScreen extends ConsumerStatefulWidget {
 }
 
 class _GhinderScreenState extends ConsumerState<GhinderScreen> {
-  final List<Map<String, dynamic>> _queue = [];
+  final List<DiscoveryCandidate> _queue = [];
   bool _loading = true;
   String? _error;
   bool _busy = false;
@@ -35,7 +37,7 @@ class _GhinderScreenState extends ConsumerState<GhinderScreen> {
         _queue.addAll(batch);
       });
     } catch (e) {
-      setState(() => _error = e.toString());
+      setState(() => _error = formatApiError(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -44,8 +46,8 @@ class _GhinderScreenState extends ConsumerState<GhinderScreen> {
   Future<void> _act(String action) async {
     if (_queue.isEmpty || _busy) return;
     final current = _queue.first;
-    final id = current['userId'] as String?;
-    if (id == null) return;
+    final id = current.userId;
+    if (id.isEmpty) return;
     setState(() => _busy = true);
     try {
       await ref.read(swipesRepositoryProvider).swipe(
@@ -61,7 +63,7 @@ class _GhinderScreenState extends ConsumerState<GhinderScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString())),
+          SnackBar(content: Text(formatApiError(e))),
         );
       }
     } finally {
@@ -96,7 +98,7 @@ class _GhinderScreenState extends ConsumerState<GhinderScreen> {
                         Expanded(
                           child: Padding(
                             padding: const EdgeInsets.all(20),
-                            child: _SwipeCard(data: _queue.first),
+                            child: _SwipeCard(candidate: _queue.first),
                           ),
                         ),
                         Padding(
@@ -122,15 +124,16 @@ class _GhinderScreenState extends ConsumerState<GhinderScreen> {
 }
 
 class _SwipeCard extends StatelessWidget {
-  const _SwipeCard({required this.data});
-  final Map<String, dynamic> data;
+  const _SwipeCard({required this.candidate});
+  final DiscoveryCandidate candidate;
 
   @override
   Widget build(BuildContext context) {
-    final profile = data['profile'] as Map<String, dynamic>?;
-    final photos = data['photos'] as List<dynamic>? ?? [];
-    final name = profile?['displayName'] ?? data['username'] ?? 'Golfer';
-    final verified = profile?['isGHINVerified'] == true;
+    final profile = candidate.profile;
+    final photos = candidate.photos;
+    final name =
+        profile?.displayName ?? candidate.username ?? 'Golfer';
+    final verified = profile?.isGHINVerified ?? false;
     return Card(
       elevation: 4,
       clipBehavior: Clip.antiAlias,
@@ -140,7 +143,7 @@ class _SwipeCard extends StatelessWidget {
           Expanded(
             child: photos.isNotEmpty
                 ? Image.network(
-                    resolveMediaUrl((photos.first as Map)['imageUrl'] as String),
+                    resolveMediaUrl(photos.first.imageUrl),
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => const ColoredBox(
                       color: Color(0xFF1B4332),
@@ -161,7 +164,7 @@ class _SwipeCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        name.toString(),
+                        name,
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                     ),
@@ -169,14 +172,14 @@ class _SwipeCard extends StatelessWidget {
                       const Icon(Icons.verified, color: Colors.teal, size: 22),
                   ],
                 ),
-                if (profile?['bio'] != null)
+                if (profile?.bio != null && profile!.bio!.isNotEmpty)
                   Text(
-                    profile!['bio'].toString(),
+                    profile.bio!,
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
-                if (profile?['handicap'] != null)
-                  Text('Handicap: ${profile!['handicap']}'),
+                if (profile?.handicap != null)
+                  Text('Handicap: ${profile!.handicap}'),
               ],
             ),
           ),
