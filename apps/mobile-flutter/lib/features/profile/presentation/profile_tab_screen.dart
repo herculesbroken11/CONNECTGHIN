@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:connectghin/core/util/api_error_message.dart';
 import 'package:connectghin/core/util/media_url.dart';
 import 'package:connectghin/features/app/data/app_repositories_provider.dart';
 import 'package:connectghin/features/profile/domain/user_profile_models.dart';
@@ -15,6 +16,7 @@ class ProfileTabScreen extends ConsumerStatefulWidget {
 class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
   UserMe? _me;
   bool _loading = true;
+  String? _loadError;
 
   @override
   void initState() {
@@ -23,12 +25,21 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
     try {
       final me = await ref.read(profileRepositoryProvider).getMe();
-      setState(() => _me = me);
-    } catch (_) {
-      setState(() => _me = null);
+      setState(() {
+        _me = me;
+        _loadError = null;
+      });
+    } catch (e) {
+      setState(() {
+        _me = null;
+        _loadError = formatApiError(e);
+      });
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -39,6 +50,31 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
     if (_loading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (_loadError != null && _me == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('My profile')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  _loadError!,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: _load,
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        ),
       );
     }
     final me = _me;

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:connectghin/core/util/api_error_message.dart';
 import 'package:connectghin/core/util/media_url.dart';
 import 'package:connectghin/features/app/data/app_repositories_provider.dart';
 import 'package:connectghin/features/discovery/domain/discovery_candidate.dart';
@@ -33,7 +34,7 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
       final list = await repo.fetchCandidates(verifiedOnly: _verifiedOnly);
       setState(() => _items = list);
     } catch (e) {
-      setState(() => _error = e.toString());
+      setState(() => _error = formatApiError(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }

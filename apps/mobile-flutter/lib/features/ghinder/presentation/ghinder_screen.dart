@@ -54,12 +54,11 @@ class _GhinderScreenState extends ConsumerState<GhinderScreen> {
             targetUserId: id,
             action: action,
           );
-      setState(() {
-        _queue.removeAt(0);
-        if (_queue.length < 3) {
-          _refill();
-        }
-      });
+      if (!mounted) return;
+      setState(() => _queue.removeAt(0));
+      if (_queue.length < 3) {
+        await _refill();
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

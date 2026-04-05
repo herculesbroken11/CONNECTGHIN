@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:connectghin/core/util/api_error_message.dart';
 import 'package:connectghin/features/auth/application/auth_providers.dart';
 import 'package:connectghin/features/auth/domain/auth_dtos.dart';
 
@@ -43,18 +44,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               password: _password.text,
               firstName: _first.text.trim(),
               lastName: _last.text.trim(),
-              username: _username.text.trim(),
+              username: _username.text.trim().toLowerCase(),
             ),
           );
       await ref.read(authSessionProvider).setAuthenticated(true);
       if (mounted) context.go('/home');
     } on DioException catch (e) {
-      final msg = e.response?.data is Map
-          ? (e.response!.data as Map)['message']?.toString()
-          : e.message;
-      setState(() => _error = msg ?? 'Registration failed');
+      setState(() => _error = formatApiError(e));
     } catch (e) {
-      setState(() => _error = e.toString());
+      setState(() => _error = formatApiError(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }

@@ -1,12 +1,13 @@
 import 'package:dio/dio.dart';
+import 'package:connectghin/features/subscriptions/domain/subscription_models.dart';
 
 class SubscriptionRepository {
   SubscriptionRepository(this._dio);
   final Dio _dio;
 
-  Future<Map<String, dynamic>> getMine() async {
+  Future<SubscriptionMine> getMine() async {
     final res = await _dio.get<Map<String, dynamic>>('/subscriptions/me');
-    return Map<String, dynamic>.from(res.data ?? {});
+    return SubscriptionMine.fromJson(Map<String, dynamic>.from(res.data ?? {}));
   }
 
   Future<String?> createCheckoutUrl() async {

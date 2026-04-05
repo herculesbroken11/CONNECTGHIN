@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:connectghin/core/util/api_error_message.dart';
 import 'package:connectghin/core/util/media_url.dart';
 import 'package:connectghin/features/app/data/app_repositories_provider.dart';
+import 'package:connectghin/features/matches/domain/match_models.dart';
 
 class MatchesScreen extends ConsumerStatefulWidget {
   const MatchesScreen({super.key});
@@ -12,7 +14,7 @@ class MatchesScreen extends ConsumerStatefulWidget {
 }
 
 class _MatchesScreenState extends ConsumerState<MatchesScreen> {
-  List<Map<String, dynamic>> _items = [];
+  List<MatchListItem> _items = [];
   bool _loading = true;
   String? _error;
 
@@ -31,7 +33,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
       final list = await ref.read(matchesRepositoryProvider).listMatches();
       setState(() => _items = list);
     } catch (e) {
-      setState(() => _error = e.toString());
+      setState(() => _error = formatApiError(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -46,7 +48,7 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$e')),
+          SnackBar(content: Text(formatApiError(e))),
         );
       }
     }
@@ -73,13 +75,11 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
                         itemCount: _items.length,
                         itemBuilder: (context, i) {
                           final row = _items[i];
-                          final user = row['user'] as Map<String, dynamic>?;
-                          final photo = user?['primaryPhoto'] as Map<String, dynamic>?;
-                          final url = photo?['imageUrl'] as String?;
-                          final name = user?['profile'] != null
-                              ? (user!['profile'] as Map)['displayName']
-                              : user?['username'];
-                          final oid = user?['id'] as String?;
+                          final user = row.otherUser;
+                          final url = user?.primaryPhoto?.imageUrl;
+                          final displayName =
+                              user?.profile?.displayName ?? user?.username ?? '';
+                          final oid = user?.id;
                           return ListTile(
                             leading: CircleAvatar(
                               backgroundImage: url != null
@@ -87,7 +87,9 @@ class _MatchesScreenState extends ConsumerState<MatchesScreen> {
                                   : null,
                               child: url == null ? const Icon(Icons.person) : null,
                             ),
-                            title: Text(name?.toString() ?? 'Golfer'),
+                            title: Text(
+                              displayName.isNotEmpty ? displayName : 'Golfer',
+                            ),
                             subtitle: const Text('Tap to message'),
                             onTap: () => _openChat(oid),
                           );

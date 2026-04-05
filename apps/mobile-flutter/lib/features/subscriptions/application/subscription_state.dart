@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:connectghin/core/util/api_error_message.dart';
 import 'package:connectghin/features/app/data/app_repositories_provider.dart';
+import 'package:connectghin/features/subscriptions/domain/subscription_models.dart';
 
 class SubscriptionState {
   const SubscriptionState({
@@ -9,12 +11,12 @@ class SubscriptionState {
   });
 
   final bool loading;
-  final Map<String, dynamic>? data;
+  final SubscriptionMine? data;
   final String? error;
 
   SubscriptionState copyWith({
     bool? loading,
-    Map<String, dynamic>? data,
+    SubscriptionMine? data,
     String? error,
   }) {
     return SubscriptionState(
@@ -35,7 +37,7 @@ class SubscriptionNotifier extends StateNotifier<SubscriptionState> {
       final m = await ref.read(subscriptionRepositoryProvider).getMine();
       state = state.copyWith(loading: false, data: m, error: null);
     } catch (e) {
-      state = state.copyWith(loading: false, error: e.toString());
+      state = state.copyWith(loading: false, error: formatApiError(e));
     }
   }
 }

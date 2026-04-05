@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:connectghin/features/auth/application/auth_providers.dart';
 import 'package:connectghin/features/auth/presentation/forgot_password_screen.dart';
+import 'package:connectghin/features/auth/presentation/reset_password_screen.dart';
 import 'package:connectghin/features/auth/presentation/welcome_screen.dart';
 import 'package:connectghin/features/auth/presentation/login_screen.dart';
 import 'package:connectghin/features/auth/presentation/register_screen.dart';
@@ -21,7 +22,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     refreshListenable: session,
     redirect: (context, state) {
       final path = state.matchedLocation;
-      final authPaths = {'/', '/login', '/register', '/forgot-password'};
+      final authPaths = {
+        '/',
+        '/login',
+        '/register',
+        '/forgot-password',
+        '/reset-password',
+      };
       if (!session.initialized) return null;
       final isAuthed = session.isAuthenticated;
       if (!isAuthed && path == '/onboarding/profile') return '/login';
@@ -36,6 +43,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/forgot-password',
         builder: (_, __) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: '/reset-password',
+        builder: (context, state) => ResetPasswordScreen(
+          initialToken: state.uri.queryParameters['token'],
+        ),
       ),
       GoRoute(path: '/home', builder: (_, __) => const MainShellScreen()),
       GoRoute(

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:connectghin/core/util/api_error_message.dart';
 import 'package:connectghin/core/network/providers.dart';
 import 'package:connectghin/core/util/socket_util.dart';
 import 'package:connectghin/features/app/data/app_repositories_provider.dart';
@@ -122,7 +123,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       await _load(silent: true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(formatApiError(e))),
+        );
       }
     }
   }

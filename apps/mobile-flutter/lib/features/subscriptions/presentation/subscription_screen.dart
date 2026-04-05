@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:connectghin/core/util/api_error_message.dart';
 import 'package:connectghin/features/app/data/app_repositories_provider.dart';
 import 'package:connectghin/features/subscriptions/application/subscription_state.dart';
 import 'package:connectghin/shared/widgets/app_async_view.dart';
@@ -30,7 +31,9 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(formatApiError(e))),
+        );
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -47,7 +50,9 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(formatApiError(e))),
+        );
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -58,8 +63,8 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(subscriptionStateProvider);
     final mine = state.data;
-    final mem = mine?['membership'] as Map<String, dynamic>?;
-    final sub = mine?['subscription'] as Map<String, dynamic>?;
+    final mem = mine?.membership;
+    final stripeStatus = mine?.subscription?.status;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Membership')),
@@ -75,11 +80,11 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 Text(
-                  '${mem?['membershipType'] ?? ''} · ${mem?['membershipStatus'] ?? ''}',
+                  '${mem?.membershipType ?? ''} · ${mem?.membershipStatus ?? ''}',
                 ),
-                if (sub != null) ...[
+                if (stripeStatus != null && stripeStatus.isNotEmpty) ...[
                   const SizedBox(height: 16),
-                  Text('Stripe: ${sub['status'] ?? ''}'),
+                  Text('Stripe: $stripeStatus'),
                 ],
                 const SizedBox(height: 24),
                 Text(

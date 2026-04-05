@@ -28,6 +28,10 @@ class AuthRepository {
     await _dio.post('/auth/forgot-password', data: dto.toJson());
   }
 
+  Future<void> resetPassword(ResetPasswordRequestDto dto) async {
+    await _dio.post('/auth/reset-password', data: dto.toJson());
+  }
+
   Future<void> logout() async {
     try {
       await _dio.post('/auth/logout');
