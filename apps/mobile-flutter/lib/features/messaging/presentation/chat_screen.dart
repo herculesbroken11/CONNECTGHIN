@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:connectghin/core/util/api_error_message.dart';
 import 'package:connectghin/core/network/providers.dart';
 import 'package:connectghin/core/util/socket_util.dart';
@@ -25,7 +25,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   List<ChatMessage> _messages = [];
   bool _loading = true;
   Timer? _poll;
-  IO.Socket? _socket;
+  io.Socket? _socket;
 
   @override
   void initState() {
@@ -60,9 +60,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _disconnectSocket();
     final t = await ref.read(tokenStoreProvider).access;
     if (t == null || !mounted) return;
-    final socket = IO.io(
+    final socket = io.io(
       chatSocketUrl(),
-      IO.OptionBuilder()
+      io.OptionBuilder()
           .setTransports(['websocket'])
           .setAuth({'token': 'Bearer $t'})
           .enableForceNew()

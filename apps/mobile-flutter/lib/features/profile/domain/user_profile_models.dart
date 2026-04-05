@@ -1,4 +1,5 @@
 /// Typed shapes for `/users/me`, `/profiles/:id`, and nested profile payloads.
+library;
 
 class ProfilePhoto {
   const ProfilePhoto({

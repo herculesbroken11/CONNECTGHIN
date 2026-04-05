@@ -183,7 +183,8 @@ class _CreateProfileScreenState extends ConsumerState<CreateProfileScreen> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: _drinking,
+                    key: ValueKey('drinking_$_drinking'),
+                    initialValue: _drinking,
                     items: const [
                       DropdownMenuItem(value: 'NO', child: Text('No drinking')),
                       DropdownMenuItem(value: 'SOCIAL', child: Text('Social')),
@@ -193,7 +194,8 @@ class _CreateProfileScreenState extends ConsumerState<CreateProfileScreen> {
                     decoration: const InputDecoration(labelText: 'Drinking'),
                   ),
                   DropdownButtonFormField<String>(
-                    value: _smoking,
+                    key: ValueKey('smoking_$_smoking'),
+                    initialValue: _smoking,
                     items: const [
                       DropdownMenuItem(value: 'NO', child: Text('No smoking')),
                       DropdownMenuItem(value: 'SOCIAL', child: Text('Social')),
@@ -203,7 +205,8 @@ class _CreateProfileScreenState extends ConsumerState<CreateProfileScreen> {
                     decoration: const InputDecoration(labelText: 'Smoking'),
                   ),
                   DropdownButtonFormField<String>(
-                    value: _music,
+                    key: ValueKey('music_$_music'),
+                    initialValue: _music,
                     items: const [
                       DropdownMenuItem(value: 'ANY', child: Text('Any')),
                       DropdownMenuItem(value: 'QUIET', child: Text('Quiet')),

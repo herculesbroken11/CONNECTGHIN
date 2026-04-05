@@ -27,9 +27,9 @@ class SubscriptionState {
   }
 }
 
-class SubscriptionNotifier extends StateNotifier<SubscriptionState> {
-  SubscriptionNotifier(this.ref) : super(const SubscriptionState());
-  final Ref ref;
+class SubscriptionNotifier extends Notifier<SubscriptionState> {
+  @override
+  SubscriptionState build() => const SubscriptionState();
 
   Future<void> load() async {
     state = state.copyWith(loading: true, error: null);
@@ -43,6 +43,6 @@ class SubscriptionNotifier extends StateNotifier<SubscriptionState> {
 }
 
 final subscriptionStateProvider =
-    StateNotifierProvider<SubscriptionNotifier, SubscriptionState>((ref) {
-  return SubscriptionNotifier(ref);
-});
+    NotifierProvider<SubscriptionNotifier, SubscriptionState>(
+  SubscriptionNotifier.new,
+);
