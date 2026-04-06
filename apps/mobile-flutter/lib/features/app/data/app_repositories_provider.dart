@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:connectghin/core/config/public_config_repository.dart';
 import 'package:connectghin/features/auth/application/auth_providers.dart';
 import 'package:connectghin/features/discovery/data/discovery_repository.dart';
+import 'package:connectghin/features/notifications/data/notifications_repository.dart';
 import 'package:connectghin/features/ghinder/data/swipes_repository.dart';
 import 'package:connectghin/features/matches/data/matches_repository.dart';
 import 'package:connectghin/features/messaging/data/messaging_repository.dart';
@@ -34,4 +36,12 @@ final subscriptionRepositoryProvider = Provider((ref) {
 
 final safetyRepositoryProvider = Provider((ref) {
   return SafetyRepository(ref.watch(dioProvider));
+});
+
+final notificationsRepositoryProvider = Provider((ref) {
+  return NotificationsRepository(ref.watch(dioProvider));
+});
+
+final publicConfigRepositoryProvider = Provider((ref) {
+  return PublicConfigRepository(ref.watch(dioProvider));
 });

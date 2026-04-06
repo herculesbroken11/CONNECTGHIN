@@ -1,14 +1,17 @@
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
+import 'package:connectghin/core/theme/app_colors.dart';
 import 'package:connectghin/core/util/api_error_message.dart';
 import 'package:connectghin/core/network/providers.dart';
 import 'package:connectghin/core/util/socket_util.dart';
 import 'package:connectghin/features/app/data/app_repositories_provider.dart';
 import 'package:connectghin/features/auth/application/auth_providers.dart';
 import 'package:connectghin/features/messaging/domain/conversation_models.dart';
+import 'package:connectghin/shared/widgets/premium_upsell.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key, required this.conversationId});
@@ -121,8 +124,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           .read(messagingRepositoryProvider)
           .sendMessage(widget.conversationId, body);
       await _load(silent: true);
+    } on DioException catch (e) {
+      if (!mounted) return;
+      setState(() => _text.text = body);
+      if (e.response?.statusCode == 403) {
+        await showPremiumUpsell(
+          context,
+          message: formatApiError(e),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(formatApiError(e))),
+        );
+      }
     } catch (e) {
       if (mounted) {
+        setState(() => _text.text = body);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(formatApiError(e))),
         );
@@ -143,54 +160,92 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       body: Column(
         children: [
           Expanded(
-            child: _loading && _messages.isEmpty
-                ? const Center(child: CircularProgressIndicator())
-                : ListView.builder(
-                    controller: _scroll,
-                    padding: const EdgeInsets.all(12),
-                    itemCount: _messages.length,
-                    itemBuilder: (context, i) {
-                      final m = _messages[i];
-                      final body = m.body;
-                      final at = DateFormat.jm().format(m.createdAt);
-                      return Align(
-                        alignment: Alignment.centerLeft,
-                        child: Card(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          child: Padding(
-                            padding: const EdgeInsets.all(10),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(body),
-                                Text(at, style: Theme.of(context).textTheme.labelSmall),
-                              ],
+            child: Container(
+              color: AppColors.surface,
+              child: _loading && _messages.isEmpty
+                  ? const Center(child: CircularProgressIndicator())
+                  : ListView.builder(
+                      controller: _scroll,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      itemCount: _messages.length,
+                      itemBuilder: (context, i) {
+                        final m = _messages[i];
+                        final body = m.body;
+                        final at = DateFormat.jm().format(m.createdAt);
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Container(
+                              constraints: BoxConstraints(
+                                maxWidth: MediaQuery.sizeOf(context).width * 0.85,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(18),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.06),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    body,
+                                    style: Theme.of(context).textTheme.bodyLarge,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    at,
+                                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                          color: AppColors.onSurfaceVariant,
+                                        ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
+                        );
+                      },
+                    ),
+            ),
           ),
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Expanded(
                     child: TextField(
                       controller: _text,
                       decoration: const InputDecoration(
                         hintText: 'Message',
-                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
                       ),
                       minLines: 1,
                       maxLines: 4,
                     ),
                   ),
-                  IconButton(
+                  const SizedBox(width: 8),
+                  FilledButton(
                     onPressed: _send,
-                    icon: const Icon(Icons.send),
+                    style: FilledButton.styleFrom(
+                      shape: const CircleBorder(),
+                      padding: const EdgeInsets.all(14),
+                    ),
+                    child: const Icon(Icons.send_rounded, size: 22),
                   ),
                 ],
               ),

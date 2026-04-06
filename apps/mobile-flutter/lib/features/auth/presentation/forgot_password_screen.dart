@@ -2,9 +2,11 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:connectghin/core/theme/app_colors.dart';
 import 'package:connectghin/core/util/api_error_message.dart';
 import 'package:connectghin/features/auth/application/auth_providers.dart';
 import 'package:connectghin/features/auth/domain/auth_dtos.dart';
+import 'package:connectghin/shared/widgets/app_ui.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -49,34 +51,81 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Forgot password')),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
+      body: Column(
         children: [
-          const Text('Enter your account email to receive reset instructions.'),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _email,
-            keyboardType: TextInputType.emailAddress,
-            decoration: const InputDecoration(labelText: 'Email'),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(24, 48, 24, 28),
+            decoration: const BoxDecoration(
+              gradient: AppColors.primaryHeaderGradient,
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  IconButton(
+                    onPressed: () => context.go('/login'),
+                    icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                    color: AppColors.onPrimary,
+                  ),
+                  Text(
+                    'Reset password',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          color: AppColors.onPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'We’ll email you a link if the account exists.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppColors.onPrimary.withValues(alpha: 0.88),
+                        ),
+                  ),
+                ],
+              ),
+            ),
           ),
-          const SizedBox(height: 16),
-          if (_error != null)
-            Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-          if (_message != null)
-            Text(_message!, style: const TextStyle(color: Colors.teal)),
-          const SizedBox(height: 16),
-          FilledButton(
-            onPressed: _busy ? null : _submit,
-            child: Text(_busy ? 'Sending…' : 'Send reset email'),
-          ),
-          TextButton(
-            onPressed: () => context.push('/reset-password'),
-            child: const Text('I have a reset token'),
-          ),
-          TextButton(
-            onPressed: () => context.go('/login'),
-            child: const Text('Back to login'),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                TextField(
+                  controller: _email,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                    prefixIcon: Icon(Icons.mail_outline_rounded),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                if (_error != null) AppErrorInline(message: _error!),
+                if (_message != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      _message!,
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                FilledButton(
+                  onPressed: _busy ? null : _submit,
+                  child: Text(_busy ? 'Sending…' : 'Send reset email'),
+                ),
+                TextButton(
+                  onPressed: () => context.push('/reset-password'),
+                  child: const Text('I have a reset token'),
+                ),
+                TextButton(
+                  onPressed: () => context.go('/login'),
+                  child: const Text('Back to login'),
+                ),
+              ],
+            ),
           ),
         ],
       ),

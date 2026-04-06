@@ -8,12 +8,14 @@ import 'package:connectghin/features/auth/presentation/welcome_screen.dart';
 import 'package:connectghin/features/auth/presentation/login_screen.dart';
 import 'package:connectghin/features/auth/presentation/register_screen.dart';
 import 'package:connectghin/features/home/presentation/main_shell_screen.dart';
+import 'package:connectghin/features/matches/presentation/matches_screen.dart';
 import 'package:connectghin/features/messaging/presentation/chat_screen.dart';
 import 'package:connectghin/features/profile/presentation/create_profile_screen.dart';
 import 'package:connectghin/features/profile/presentation/edit_profile_screen.dart';
 import 'package:connectghin/features/subscriptions/presentation/subscription_screen.dart';
 import 'package:connectghin/features/settings/presentation/settings_screen.dart';
 import 'package:connectghin/features/safety/presentation/safety_screen.dart';
+import 'package:connectghin/features/notifications/presentation/notifications_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final session = ref.watch(authSessionProvider);
@@ -51,6 +53,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(path: '/home', builder: (_, __) => const MainShellScreen()),
+      GoRoute(path: '/matches', builder: (_, __) => const MatchesScreen()),
+      GoRoute(
+        path: '/notifications',
+        builder: (_, __) => const NotificationsScreen(),
+      ),
       GoRoute(
         path: '/chat/:cid',
         builder: (context, state) =>

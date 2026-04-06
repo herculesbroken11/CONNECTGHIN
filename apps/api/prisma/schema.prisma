@@ -139,6 +139,8 @@ model Profile {
   isGHINVerified          Boolean   @default(false)
   ghinVerifiedAt          DateTime?
   ghinVerifiedByAdminId   String?
+  ghinVerificationRequestedAt DateTime?
+  ghinVerificationRequestNote   String?
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
 
@@ -146,6 +148,7 @@ model Profile {
   ghinVerifiedByAdmin User? @relation("GhinVerifiedByAdmin", fields: [ghinVerifiedByAdminId], references: [id], onDelete: SetNull)
 
   @@index([isGHINVerified])
+  @@index([ghinVerificationRequestedAt])
   @@index([city, state, country])
 }
 

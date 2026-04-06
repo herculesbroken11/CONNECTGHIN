@@ -43,12 +43,16 @@ class UserProfile {
     this.bio,
     this.age,
     this.city,
+    this.locationLat,
+    this.locationLng,
     this.handicap,
     this.drinkingPreference,
     this.smokingPreference,
     this.musicPreference,
     required this.profileCompletionPercent,
     required this.isGHINVerified,
+    this.ghinVerificationRequestedAt,
+    this.ghinVerificationRequestNote,
   });
 
   final String id;
@@ -57,17 +61,22 @@ class UserProfile {
   final String? bio;
   final int? age;
   final String? city;
+  final double? locationLat;
+  final double? locationLng;
   final double? handicap;
   final String? drinkingPreference;
   final String? smokingPreference;
   final String? musicPreference;
   final int profileCompletionPercent;
   final bool isGHINVerified;
+  final DateTime? ghinVerificationRequestedAt;
+  final String? ghinVerificationRequestNote;
 
   factory UserProfile.fromJson(Map<String, dynamic>? json) {
     if (json == null) {
       throw ArgumentError('Profile JSON is null');
     }
+    final reqAt = json['ghinVerificationRequestedAt'];
     return UserProfile(
       id: json['id'] as String,
       userId: json['userId'] as String,
@@ -75,6 +84,8 @@ class UserProfile {
       bio: json['bio'] as String?,
       age: (json['age'] as num?)?.toInt(),
       city: json['city'] as String?,
+      locationLat: (json['locationLat'] as num?)?.toDouble(),
+      locationLng: (json['locationLng'] as num?)?.toDouble(),
       handicap: (json['handicap'] as num?)?.toDouble(),
       drinkingPreference: json['drinkingPreference'] as String?,
       smokingPreference: json['smokingPreference'] as String?,
@@ -82,6 +93,11 @@ class UserProfile {
       profileCompletionPercent:
           (json['profileCompletionPercent'] as num?)?.toInt() ?? 0,
       isGHINVerified: json['isGHINVerified'] as bool? ?? false,
+      ghinVerificationRequestedAt: reqAt == null
+          ? null
+          : DateTime.tryParse(reqAt.toString()),
+      ghinVerificationRequestNote:
+          json['ghinVerificationRequestNote'] as String?,
     );
   }
 

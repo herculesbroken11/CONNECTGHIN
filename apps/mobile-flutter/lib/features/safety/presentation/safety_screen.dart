@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:connectghin/core/util/api_error_message.dart';
 import 'package:connectghin/features/app/data/app_repositories_provider.dart';
 
@@ -78,45 +79,88 @@ class _SafetyScreenState extends ConsumerState<SafetyScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Safety')),
+      appBar: AppBar(
+        title: const Text('Safety'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/home');
+            }
+          },
+        ),
+      ),
       body: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         children: [
-          Text('Report a user', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
+          Text(
+            'Report a user',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 12),
           TextField(
             controller: _targetId,
             decoration: const InputDecoration(
               labelText: 'Target user ID (UUID)',
+              prefixIcon: Icon(Icons.person_search_outlined),
             ),
           ),
+          const SizedBox(height: 12),
           TextField(
             controller: _reason,
-            decoration: const InputDecoration(labelText: 'Reason'),
-          ),
-          TextField(
-            controller: _details,
-            decoration: const InputDecoration(labelText: 'Details (optional)'),
-            maxLines: 3,
+            decoration: const InputDecoration(
+              labelText: 'Reason',
+              prefixIcon: Icon(Icons.flag_outlined),
+            ),
           ),
           const SizedBox(height: 12),
+          TextField(
+            controller: _details,
+            decoration: const InputDecoration(
+              labelText: 'Details (optional)',
+              alignLabelWithHint: true,
+            ),
+            maxLines: 3,
+          ),
+          const SizedBox(height: 16),
           FilledButton(
             onPressed: _submitReport,
             child: const Text('Submit report'),
           ),
           const SizedBox(height: 32),
-          Text('Blocked users', style: Theme.of(context).textTheme.titleMedium),
-          ..._blocks.map((b) {
-            final u = b['user'] as Map<String, dynamic>?;
-            final id = b['blockedUserId'] as String?;
-            return ListTile(
-              title: Text(u?['username']?.toString() ?? id ?? ''),
-              trailing: TextButton(
-                onPressed: id != null ? () => _unblock(id) : null,
-                child: const Text('Unblock'),
-              ),
-            );
-          }),
+          Text(
+            'Blocked users',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 12),
+          if (_blocks.isEmpty)
+            Text(
+              'No blocked users.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            )
+          else
+            ..._blocks.map((b) {
+              final u = b['user'] as Map<String, dynamic>?;
+              final id = b['blockedUserId'] as String?;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Material(
+                  color: Colors.white,
+                  elevation: 1,
+                  shadowColor: Colors.black.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(14),
+                  child: ListTile(
+                    title: Text(u?['username']?.toString() ?? id ?? ''),
+                    trailing: TextButton(
+                      onPressed: id != null ? () => _unblock(id) : null,
+                      child: const Text('Unblock'),
+                    ),
+                  ),
+                ),
+              );
+            }),
         ],
       ),
     );

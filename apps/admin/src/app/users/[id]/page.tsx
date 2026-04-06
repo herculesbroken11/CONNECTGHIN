@@ -200,6 +200,17 @@ export default function UserDetailPage() {
           <div className="mt-5 grid gap-2 text-xs text-slate-500 md:grid-cols-2">
             <p>Subscription: {(subscription?.status as string) ?? (user?.membershipStatus as string) ?? 'NONE'}</p>
             <p>GHIN verified: {profile?.isGHINVerified ? 'Yes' : 'No'}</p>
+            {profile?.ghinVerificationRequestedAt ? (
+              <p className="text-amber-200/90 md:col-span-2">
+                Verification requested:{' '}
+                {new Date(profile.ghinVerificationRequestedAt as string).toLocaleString()}
+              </p>
+            ) : null}
+            {profile?.ghinVerificationRequestNote ? (
+              <p className="md:col-span-2 text-slate-400">
+                User note (verification): {String(profile.ghinVerificationRequestNote)}
+              </p>
+            ) : null}
           </div>
         </form>
       </div>

@@ -2,7 +2,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:connectghin/core/theme/app_colors.dart';
 import 'package:connectghin/core/util/api_error_message.dart';
+import 'package:connectghin/shared/widgets/app_ui.dart';
 import 'package:connectghin/features/auth/application/auth_providers.dart';
 import 'package:connectghin/features/auth/domain/auth_dtos.dart';
 
@@ -96,55 +98,90 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Set new password')),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
+      body: Column(
         children: [
-          Text(
-            'Use the full token from your reset email (or dev logs). '
-            'It contains a dot: uuid… . secret…',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _token,
-            decoration: const InputDecoration(
-              labelText: 'Reset token',
-              hintText: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.your-secret',
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(24, 48, 24, 28),
+            decoration: const BoxDecoration(
+              gradient: AppColors.primaryHeaderGradient,
             ),
-            autocorrect: false,
-            maxLines: 2,
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _password,
-            decoration: const InputDecoration(
-              labelText: 'New password',
-              helperText: 'Uppercase, lowercase, and a number',
+            child: SafeArea(
+              bottom: false,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  IconButton(
+                    onPressed: () => context.go('/login'),
+                    icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                    color: AppColors.onPrimary,
+                  ),
+                  Text(
+                    'New password',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          color: AppColors.onPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Paste the full token from your email (uuid.secret).',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppColors.onPrimary.withValues(alpha: 0.88),
+                        ),
+                  ),
+                ],
+              ),
             ),
-            obscureText: true,
           ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _password2,
-            decoration: const InputDecoration(labelText: 'Confirm password'),
-            obscureText: true,
-          ),
-          if (_error != null) ...[
-            const SizedBox(height: 16),
-            Text(
-              _error!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                TextField(
+                  controller: _token,
+                  decoration: const InputDecoration(
+                    labelText: 'Reset token',
+                    hintText: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.your-secret',
+                    prefixIcon: Icon(Icons.key_outlined),
+                  ),
+                  autocorrect: false,
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _password,
+                  decoration: const InputDecoration(
+                    labelText: 'New password',
+                    helperText: 'Uppercase, lowercase, and a number',
+                    prefixIcon: Icon(Icons.lock_outline_rounded),
+                  ),
+                  obscureText: true,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _password2,
+                  decoration: const InputDecoration(
+                    labelText: 'Confirm password',
+                    prefixIcon: Icon(Icons.lock_outline_rounded),
+                  ),
+                  obscureText: true,
+                ),
+                if (_error != null) ...[
+                  const SizedBox(height: 16),
+                  AppErrorInline(message: _error!),
+                ],
+                const SizedBox(height: 24),
+                FilledButton(
+                  onPressed: _busy ? null : _submit,
+                  child: Text(_busy ? 'Saving…' : 'Update password'),
+                ),
+                TextButton(
+                  onPressed: () => context.go('/login'),
+                  child: const Text('Back to login'),
+                ),
+              ],
             ),
-          ],
-          const SizedBox(height: 24),
-          FilledButton(
-            onPressed: _busy ? null : _submit,
-            child: Text(_busy ? 'Saving…' : 'Update password'),
-          ),
-          TextButton(
-            onPressed: () => context.go('/login'),
-            child: const Text('Back to login'),
           ),
         ],
       ),

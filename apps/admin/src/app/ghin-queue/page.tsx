@@ -9,8 +9,25 @@ type Row = {
   id: string;
   email: string;
   username: string;
-  profile: { displayName: string; isGHINVerified: boolean };
+  profile: {
+    displayName: string;
+    isGHINVerified: boolean;
+    ghinVerificationRequestedAt?: string | null;
+    ghinVerificationRequestNote?: string | null;
+  };
 };
+
+function formatRequestedAt(iso: string | null | undefined) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleString(undefined, {
+      dateStyle: 'short',
+      timeStyle: 'short',
+    });
+  } catch {
+    return '—';
+  }
+}
 
 export default function GhinQueuePage() {
   const [rows, setRows] = useState<Row[]>([]);
@@ -72,6 +89,8 @@ export default function GhinQueuePage() {
                   <th className="p-3">User</th>
                   <th className="p-3">Email</th>
                   <th className="p-3">GHIN Status</th>
+                  <th className="p-3">Requested</th>
+                  <th className="p-3">User note</th>
                   <th className="p-3">Action</th>
                 </tr>
               </thead>
@@ -88,6 +107,16 @@ export default function GhinQueuePage() {
                         Pending
                       </span>
                     </td>
+                    <td className="max-w-[160px] p-3 text-xs text-slate-400">
+                      {formatRequestedAt(r.profile?.ghinVerificationRequestedAt)}
+                    </td>
+                    <td className="max-w-[220px] p-3 text-xs text-slate-400" title={r.profile?.ghinVerificationRequestNote ?? undefined}>
+                      {r.profile?.ghinVerificationRequestNote
+                        ? r.profile.ghinVerificationRequestNote.length > 90
+                          ? `${r.profile.ghinVerificationRequestNote.slice(0, 90)}…`
+                          : r.profile.ghinVerificationRequestNote
+                        : '—'}
+                    </td>
                     <td className="p-3">
                       <Link href={`/users/${r.id}`} className="admin-button admin-button-primary px-2 py-1 text-xs">
                         Review
@@ -97,7 +126,7 @@ export default function GhinQueuePage() {
                 ))}
                 {filteredRows.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="p-4 text-center text-slate-500">
+                    <td colSpan={6} className="p-4 text-center text-slate-500">
                       Queue is empty.
                     </td>
                   </tr>

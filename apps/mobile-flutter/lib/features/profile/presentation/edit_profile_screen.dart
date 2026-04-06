@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:connectghin/core/theme/app_colors.dart';
 import 'package:connectghin/core/util/api_error_message.dart';
 import 'package:connectghin/features/app/data/app_repositories_provider.dart';
 import 'package:connectghin/features/profile/domain/user_profile_models.dart';
@@ -19,6 +21,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   final _display = TextEditingController();
   final _bio = TextEditingController();
   final _city = TextEditingController();
+  final _age = TextEditingController();
   final _handicap = TextEditingController();
   String _drinking = 'SOCIAL';
   String _smoking = 'NO';
@@ -26,7 +29,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   bool _loading = true;
   bool _saving = false;
   bool _uploadingPhoto = false;
+  bool _locating = false;
   ProfilePhoto? _previewPhoto;
+  double? _savedLocationLat;
+  double? _savedLocationLng;
 
   @override
   void initState() {
@@ -39,6 +45,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _display.dispose();
     _bio.dispose();
     _city.dispose();
+    _age.dispose();
     _handicap.dispose();
     super.dispose();
   }
@@ -51,11 +58,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       _display.text = profile?.displayName ?? '';
       _bio.text = profile?.bio ?? '';
       _city.text = profile?.city ?? '';
+      _age.text = profile?.age?.toString() ?? '';
       _handicap.text = profile?.handicap?.toString() ?? '';
       _drinking = profile?.drinkingPreference ?? 'SOCIAL';
       _smoking = profile?.smokingPreference ?? 'NO';
       _music = profile?.musicPreference ?? 'ANY';
       _previewPhoto = me.profilePhotos.primaryOrFirst;
+      _savedLocationLat = profile?.locationLat;
+      _savedLocationLng = profile?.locationLng;
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -63,23 +73,30 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (_previewPhoto == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile photo is required')),
+      );
+      return;
+    }
     setState(() => _saving = true);
     try {
-      final handicap = _handicap.text.trim().isNotEmpty
-          ? double.tryParse(_handicap.text.trim())
-          : null;
-      if (_handicap.text.trim().isNotEmpty && handicap == null) {
-        throw StateError('Handicap must be a number');
-      }
-      await ref.read(profileRepositoryProvider).updateProfile({
+      final handicap = double.parse(_handicap.text.trim());
+      final patch = <String, dynamic>{
         'displayName': _display.text.trim(),
         'bio': _bio.text.trim(),
         'city': _city.text.trim(),
+        'handicap': handicap,
         'drinkingPreference': _drinking,
         'smokingPreference': _smoking,
         'musicPreference': _music,
-        if (handicap != null) 'handicap': handicap,
-      });
+      };
+      final ageStr = _age.text.trim();
+      if (ageStr.isNotEmpty) {
+        final a = int.tryParse(ageStr);
+        if (a != null) patch['age'] = a;
+      }
+      await ref.read(profileRepositoryProvider).updateProfile(patch);
       if (mounted) context.pop();
     } catch (e) {
       if (mounted) {
@@ -89,6 +106,46 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       }
     } finally {
       if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _useMyLocation() async {
+    setState(() => _locating = true);
+    try {
+      var perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Location permission is required to use this feature'),
+            ),
+          );
+        }
+        return;
+      }
+      final pos = await Geolocator.getCurrentPosition();
+      await ref.read(profileRepositoryProvider).updateProfile({
+        'locationLat': pos.latitude,
+        'locationLng': pos.longitude,
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Location saved for distance matching')),
+        );
+        await _load();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(formatApiError(e))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _locating = false);
     }
   }
 
@@ -120,14 +177,50 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit profile')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : Form(
-              key: _formKey,
-              child: ListView(
-              padding: const EdgeInsets.all(20),
+          : Column(
               children: [
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(8, 44, 20, 24),
+                  decoration: const BoxDecoration(
+                    gradient: AppColors.primaryHeaderGradient,
+                  ),
+                  child: SafeArea(
+                    bottom: false,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        IconButton(
+                          onPressed: () => context.pop(),
+                          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                          color: AppColors.onPrimary,
+                        ),
+                        Text(
+                          'Edit profile',
+                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                color: AppColors.onPrimary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Keep your info current so partners know what to expect on the course.',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: AppColors.onPrimary.withValues(alpha: 0.88),
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Form(
+                    key: _formKey,
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+                      children: [
                 ProfilePhotoSlot(photo: _previewPhoto),
                 const SizedBox(height: 12),
                 FilledButton.tonal(
@@ -143,7 +236,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 const SizedBox(height: 20),
                 TextFormField(
                   controller: _display,
-                  decoration: const InputDecoration(labelText: 'Display name'),
+                  decoration:
+                      const InputDecoration(labelText: 'Display name *'),
                   validator: (v) {
                     final t = (v ?? '').trim();
                     if (t.length < 2) return 'Display name is too short';
@@ -153,24 +247,66 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 ),
                 TextFormField(
                   controller: _bio,
-                  decoration: const InputDecoration(labelText: 'Bio'),
+                  decoration: const InputDecoration(labelText: 'Bio *'),
                   maxLines: 4,
-                  validator: (v) =>
-                      (v != null && v.length > 2000) ? 'Bio is too long' : null,
+                  validator: (v) {
+                    final t = (v ?? '').trim();
+                    if (t.isEmpty) return 'Bio is required';
+                    if (t.length > 2000) return 'Bio is too long';
+                    return null;
+                  },
                 ),
                 TextFormField(
                   controller: _city,
-                  decoration: const InputDecoration(labelText: 'City'),
-                  validator: (v) =>
-                      (v != null && v.length > 120) ? 'City is too long' : null,
+                  decoration: const InputDecoration(labelText: 'City *'),
+                  validator: (v) {
+                    final t = (v ?? '').trim();
+                    if (t.isEmpty) return 'City is required';
+                    if (t.length > 120) return 'City is too long';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: (_saving || _locating) ? null : _useMyLocation,
+                  icon: _locating
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.my_location_rounded),
+                  label: Text(_locating ? 'Getting location…' : 'Use my location'),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    _savedLocationLat != null && _savedLocationLng != null
+                        ? 'Saved location: ${_savedLocationLat!.toStringAsFixed(4)}, ${_savedLocationLng!.toStringAsFixed(4)}'
+                        : 'Add coordinates so Discover distance filters work.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                 ),
                 TextFormField(
-                  controller: _handicap,
-                  decoration: const InputDecoration(labelText: 'Handicap'),
+                  controller: _age,
+                  decoration: const InputDecoration(labelText: 'Age (optional)'),
                   keyboardType: TextInputType.number,
                   validator: (v) {
                     final t = (v ?? '').trim();
                     if (t.isEmpty) return null;
+                    final n = int.tryParse(t);
+                    if (n == null) return 'Enter a valid age';
+                    if (n < 18 || n > 120) return 'Age must be 18–120';
+                    return null;
+                  },
+                ),
+                TextFormField(
+                  controller: _handicap,
+                  decoration: const InputDecoration(labelText: 'Handicap *'),
+                  keyboardType: TextInputType.number,
+                  validator: (v) {
+                    final t = (v ?? '').trim();
+                    if (t.isEmpty) return 'Handicap is required';
                     final n = double.tryParse(t);
                     if (n == null) return 'Enter a valid number';
                     if (n < -10 || n > 60) return 'Handicap looks invalid';
@@ -216,8 +352,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   onPressed: _saving ? null : _save,
                   child: Text(_saving ? 'Saving…' : 'Save'),
                 ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
-            )),
+            ),
     );
   }
 }

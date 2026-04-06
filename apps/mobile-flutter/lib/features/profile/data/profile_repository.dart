@@ -20,6 +20,16 @@ class ProfileRepository {
     return UserProfile.fromJson(Map<String, dynamic>.from(res.data ?? {}));
   }
 
+  Future<UserProfile> requestGhinVerification({String? note}) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      'profiles/me/request-ghin-verification',
+      data: (note != null && note.trim().isNotEmpty)
+          ? {'note': note.trim()}
+          : <String, dynamic>{},
+    );
+    return UserProfile.fromJson(Map<String, dynamic>.from(res.data ?? {}));
+  }
+
   Future<ProfilePhoto> uploadPhoto(List<int> bytes, String filename) async {
     final form = FormData.fromMap({
       'file': MultipartFile.fromBytes(bytes, filename: filename),

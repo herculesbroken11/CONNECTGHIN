@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 import { DiscoveryQueryDto } from './dto/discovery-query.dto';
 import { Prisma } from '@prisma/client';
@@ -27,6 +27,14 @@ export class DiscoveryService {
 
   async candidates(userId: string, query: DiscoveryQueryDto) {
     const limit = query.limit ?? 20;
+
+    if (
+      query.handicapMin != null &&
+      query.handicapMax != null &&
+      query.handicapMin > query.handicapMax
+    ) {
+      throw new BadRequestException('handicapMin must be <= handicapMax');
+    }
 
     const blocks = await this.prisma.block.findMany({
       where: {
@@ -68,6 +76,12 @@ export class DiscoveryService {
     }
     if (query.musicPreference) {
       profileWhere.musicPreference = query.musicPreference;
+    }
+    if (query.handicapMin != null || query.handicapMax != null) {
+      const handicap: Prisma.FloatNullableFilter<'Profile'> = {};
+      if (query.handicapMin != null) handicap.gte = query.handicapMin;
+      if (query.handicapMax != null) handicap.lte = query.handicapMax;
+      profileWhere.handicap = handicap;
     }
 
     const users = await this.prisma.user.findMany({

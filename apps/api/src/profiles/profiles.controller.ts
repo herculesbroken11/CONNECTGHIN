@@ -14,6 +14,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { ProfilesService } from './profiles.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { RequestGhinVerificationDto } from './dto/request-ghin-verification.dto';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { JwtPayload } from '@/auth/types/jwt-payload.type';
 
@@ -32,6 +33,14 @@ export class ProfilesController {
   @Patch('me')
   patchMe(@CurrentUser() user: JwtPayload, @Body() dto: UpdateProfileDto) {
     return this.profiles.updateMine(user.sub, dto);
+  }
+
+  @Post('me/request-ghin-verification')
+  requestGhinVerification(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: RequestGhinVerificationDto,
+  ) {
+    return this.profiles.requestGhinVerification(user.sub, dto);
   }
 
   @Post('me/photos')

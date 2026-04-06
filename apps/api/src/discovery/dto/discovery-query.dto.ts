@@ -2,6 +2,7 @@ import { Transform } from 'class-transformer';
 import {
   IsBoolean,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   Max,
@@ -34,6 +35,19 @@ export class DiscoveryQueryDto {
   @Min(1)
   @Max(500)
   distance?: number;
+
+  /** Inclusive; candidates without a handicap are excluded when either bound is set. */
+  @IsOptional()
+  @IsNumber()
+  @Min(-10)
+  @Max(60)
+  handicapMin?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(-10)
+  @Max(60)
+  handicapMax?: number;
 
   @IsOptional()
   @IsString()

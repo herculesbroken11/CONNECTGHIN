@@ -1,10 +1,14 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:connectghin/core/theme/app_colors.dart';
 import 'package:connectghin/core/util/api_error_message.dart';
 import 'package:connectghin/core/util/media_url.dart';
 import 'package:connectghin/features/app/data/app_repositories_provider.dart';
 import 'package:connectghin/features/discovery/domain/discovery_candidate.dart';
 import 'package:connectghin/features/profile/domain/user_profile_models.dart';
+import 'package:connectghin/shared/widgets/app_ui.dart';
+import 'package:connectghin/shared/widgets/premium_upsell.dart';
 
 class GhinderScreen extends ConsumerStatefulWidget {
   const GhinderScreen({super.key});
@@ -60,6 +64,18 @@ class _GhinderScreenState extends ConsumerState<GhinderScreen> {
       if (_queue.length < 3) {
         await _refill();
       }
+    } on DioException catch (e) {
+      if (!mounted) return;
+      if (e.response?.statusCode == 403) {
+        await showPremiumUpsell(
+          context,
+          message: formatApiError(e),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(formatApiError(e))),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -78,41 +94,62 @@ class _GhinderScreenState extends ConsumerState<GhinderScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Text(_error!))
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        AppErrorInline(message: _error!),
+                        const SizedBox(height: 16),
+                        FilledButton(onPressed: _refill, child: const Text('Retry')),
+                      ],
+                    ),
+                  ),
+                )
               : _queue.isEmpty
                   ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text('You’re all caught up.'),
-                          const SizedBox(height: 16),
-                          FilledButton(
-                            onPressed: _refill,
-                            child: const Text('Refresh deck'),
-                          ),
-                        ],
+                      child: AppEmptyState(
+                        icon: Icons.celebration_outlined,
+                        title: 'You’re all caught up',
+                        subtitle: 'Check back soon for more golfers in your area.',
+                        action: FilledButton.tonal(
+                          onPressed: _refill,
+                          child: const Text('Refresh deck'),
+                        ),
                       ),
                     )
                   : Column(
                       children: [
                         Expanded(
                           child: Padding(
-                            padding: const EdgeInsets.all(20),
+                            padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
                             child: _SwipeCard(candidate: _queue.first),
                           ),
                         ),
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+                          padding: const EdgeInsets.fromLTRB(24, 12, 24, 28),
                           child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                             children: [
-                              FilledButton.tonal(
-                                onPressed: _busy ? null : () => _act('PASS'),
-                                child: const Text('Pass'),
+                              Expanded(
+                                child: FilledButton.tonal(
+                                  style: FilledButton.styleFrom(
+                                    minimumSize: const Size.fromHeight(52),
+                                    foregroundColor: AppColors.onSurfaceVariant,
+                                  ),
+                                  onPressed: _busy ? null : () => _act('PASS'),
+                                  child: const Text('Pass'),
+                                ),
                               ),
-                              FilledButton(
-                                onPressed: _busy ? null : () => _act('LIKE'),
-                                child: const Text('Like'),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: FilledButton(
+                                  style: FilledButton.styleFrom(
+                                    minimumSize: const Size.fromHeight(52),
+                                  ),
+                                  onPressed: _busy ? null : () => _act('LIKE'),
+                                  child: const Text('Connect'),
+                                ),
                               ),
                             ],
                           ),
@@ -132,11 +169,18 @@ class _SwipeCard extends StatelessWidget {
     final profile = candidate.profile;
     final photos = candidate.photos;
     final primary = photos.primaryOrFirst;
-    final name =
-        profile?.displayName ?? candidate.username ?? 'Golfer';
+    final name = profile?.displayName ?? candidate.username ?? 'Golfer';
     final verified = profile?.isGHINVerified ?? false;
-    return Card(
+    final subtitle = [
+      if (profile?.city != null && profile!.city!.trim().isNotEmpty)
+        profile.city!.trim(),
+      if (profile?.handicap != null) 'HCP ${profile!.handicap}',
+    ].join(' · ');
+
+    return Material(
       elevation: 4,
+      shadowColor: Colors.black.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(24),
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -146,45 +190,61 @@ class _SwipeCard extends StatelessWidget {
                 ? Image.network(
                     resolveMediaUrl(primary.imageUrl),
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const ColoredBox(
-                      color: Color(0xFF1B4332),
-                      child: Icon(Icons.golf_course, size: 80, color: Colors.white54),
-                    ),
+                    errorBuilder: (_, __, ___) => _fallbackPhoto(),
                   )
-                : const ColoredBox(
-                    color: Color(0xFF1B4332),
-                    child: Icon(Icons.person, size: 80, color: Colors.white54),
-                  ),
+                : _fallbackPhoto(),
           ),
-          Padding(
-            padding: const EdgeInsets.all(16),
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
                       child: Text(
                         name,
-                        style: Theme.of(context).textTheme.titleLarge,
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.3,
+                            ),
                       ),
                     ),
                     if (verified)
-                      const Icon(Icons.verified, color: Colors.teal, size: 22),
+                      Icon(Icons.verified_rounded, color: AppColors.verified, size: 26),
                   ],
                 ),
-                if (profile?.bio != null && profile!.bio!.isNotEmpty)
+                if (subtitle.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    subtitle,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
+                if (profile?.bio != null && profile!.bio!.trim().isNotEmpty) ...[
+                  const SizedBox(height: 12),
                   Text(
                     profile.bio!,
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyMedium,
                   ),
-                if (profile?.handicap != null)
-                  Text('Handicap: ${profile!.handicap}'),
+                ],
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _fallbackPhoto() {
+    return ColoredBox(
+      color: AppColors.primary,
+      child: Center(
+        child: Icon(Icons.sports_golf_rounded, size: 88, color: AppColors.onPrimary.withValues(alpha: 0.35)),
       ),
     );
   }

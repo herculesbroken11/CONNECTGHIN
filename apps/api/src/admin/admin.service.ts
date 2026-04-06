@@ -12,7 +12,7 @@ import { SuspendUserDto } from './dto/suspend-user.dto';
 import { ReviewReportDto } from './dto/review-report.dto';
 import { UpdateAdminUserDto } from './dto/update-admin-user.dto';
 import { JwtPayload } from '@/auth/types/jwt-payload.type';
-import { UserRole, ReportStatus, MembershipType } from '@prisma/client';
+import { Prisma, UserRole, ReportStatus, MembershipType } from '@prisma/client';
 
 @Injectable()
 export class AdminService {
@@ -76,12 +76,22 @@ export class AdminService {
 
   /** Profiles that are not GHIN-verified (manual verification queue). */
   async listGhinQueue(skip = 0, take = 50) {
-    return this.prisma.user.findMany({
-      where: {
-        role: UserRole.USER,
-        isActive: true,
-        profile: { isGHINVerified: false },
-      },
+    const rows = await this.prisma.$queryRaw<{ id: string }[]>(
+      Prisma.sql`
+        SELECT u."id"
+        FROM "User" u
+        INNER JOIN "Profile" p ON p."userId" = u."id"
+        WHERE u."role" = 'USER'::"UserRole"
+          AND u."isActive" = true
+          AND p."isGHINVerified" = false
+        ORDER BY p."ghinVerificationRequestedAt" DESC NULLS LAST, u."createdAt" DESC
+        OFFSET ${skip} LIMIT ${take}
+      `,
+    );
+    const ids = rows.map((r) => r.id);
+    if (ids.length === 0) return [];
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: ids } },
       select: {
         id: true,
         email: true,
@@ -91,10 +101,9 @@ export class AdminService {
         createdAt: true,
         profile: true,
       },
-      orderBy: { createdAt: 'desc' },
-      skip,
-      take,
     });
+    const byId = new Map(users.map((u) => [u.id, u]));
+    return ids.map((id) => byId.get(id)).filter((u): u is (typeof users)[number] => u != null);
   }
 
   async listUsers(search?: string, skip = 0, take = 50) {
@@ -286,6 +295,8 @@ export class AdminService {
         isGHINVerified: true,
         ghinVerifiedAt: new Date(),
         ghinVerifiedByAdminId: adminId,
+        ghinVerificationRequestedAt: null,
+        ghinVerificationRequestNote: null,
       },
     });
     await this.audit(adminId, 'GHIN_VERIFY', userId);
