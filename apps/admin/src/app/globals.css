@@ -5,9 +5,17 @@
 body {
   @apply bg-slate-950 text-slate-100 antialiased;
   background:
-    radial-gradient(1200px 500px at 5% -10%, rgba(37, 99, 235, 0.2), transparent 60%),
-    radial-gradient(900px 420px at 95% 0%, rgba(14, 165, 233, 0.14), transparent 60%),
-    #020617;
+    radial-gradient(900px 420px at 15% -20%, rgba(16, 185, 129, 0.12), transparent 60%),
+    radial-gradient(920px 500px at 95% 0%, rgba(14, 165, 233, 0.1), transparent 65%),
+    #020705;
+}
+
+:root[data-admin-theme='light'] body {
+  color: #0f172a;
+  background:
+    radial-gradient(900px 420px at 15% -20%, rgba(16, 185, 129, 0.08), transparent 60%),
+    radial-gradient(920px 500px at 95% 0%, rgba(14, 165, 233, 0.08), transparent 65%),
+    #eef4f1;
 }
 
 * {
@@ -16,28 +24,48 @@ body {
 }
 
 @layer components {
+  .admin-rail {
+    @apply flex min-h-[calc(100vh-1.5rem)] w-[56px] flex-col rounded-xl border border-slate-800/90 bg-[#030b09] p-2;
+  }
+
+  .admin-menu {
+    @apply flex min-h-[calc(100vh-1.5rem)] flex-col rounded-xl border border-slate-800/90 bg-[#030b09]/95 p-3;
+  }
+
+  .admin-topbar {
+    @apply flex items-center gap-2 rounded-xl border border-slate-800/90 bg-[#040d0a]/95 px-3 py-2 backdrop-blur;
+  }
+
+  .admin-chip {
+    @apply rounded-lg border border-emerald-500/35 bg-emerald-500/20 px-3 py-2 text-xs font-medium text-emerald-200;
+  }
+
+  .admin-icon-btn {
+    @apply h-8 w-8 items-center justify-center rounded-lg border border-slate-800 bg-slate-900/50 text-xs text-slate-300;
+  }
+
   .admin-panel {
-    @apply rounded-2xl border border-slate-800/90 bg-slate-900/55 shadow-[0_10px_35px_-16px_rgba(0,0,0,0.8)];
+    @apply rounded-xl border border-slate-800/90 bg-[#05100c]/90 shadow-[0_10px_35px_-18px_rgba(0,0,0,0.9)];
   }
 
   .admin-panel-muted {
-    @apply rounded-xl border border-slate-800/80 bg-slate-900/35;
+    @apply rounded-xl border border-slate-800/80 bg-[#07130f]/70;
   }
 
   .admin-input {
-    @apply w-full rounded-xl border border-slate-700/80 bg-slate-950/80 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-sky-500/60 focus:outline-none focus:ring-2 focus:ring-sky-500/20;
+    @apply w-full rounded-lg border border-slate-700/80 bg-slate-950/80 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-emerald-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500/15;
   }
 
   .admin-button {
-    @apply inline-flex items-center justify-center rounded-xl border border-slate-700/80 bg-slate-800/80 px-3 py-2 text-sm font-medium text-slate-100 transition hover:bg-slate-700/90;
+    @apply inline-flex items-center justify-center rounded-lg border border-slate-700/80 bg-slate-800/80 px-3 py-2 text-sm font-medium text-slate-100 transition hover:bg-slate-700/90;
   }
 
   .admin-button-primary {
-    @apply border-sky-600/40 bg-sky-600/85 text-white hover:bg-sky-500;
+    @apply border-emerald-600/35 bg-emerald-600/85 text-white hover:bg-emerald-500;
   }
 
   .admin-table-wrap {
-    @apply overflow-x-auto rounded-2xl border border-slate-800/90 bg-slate-900/35;
+    @apply overflow-x-auto rounded-xl border border-slate-800/90 bg-[#05110d]/80;
   }
 
   .admin-table {
@@ -45,7 +73,7 @@ body {
   }
 
   .admin-table thead {
-    @apply bg-slate-900/70 text-slate-400;
+    @apply bg-slate-900/50 text-slate-400;
   }
 
   .admin-table th {
@@ -59,4 +87,115 @@ body {
   .admin-table tbody tr {
     @apply border-t border-slate-800/80;
   }
+}
+
+.theme-light .admin-rail {
+  border-color: rgba(148, 163, 184, 0.45);
+  background: rgba(248, 250, 252, 0.95);
+}
+
+.theme-light .admin-menu {
+  border-color: rgba(148, 163, 184, 0.45);
+  background: rgba(248, 250, 252, 0.96);
+}
+
+.theme-light .admin-topbar {
+  border-color: rgba(148, 163, 184, 0.45);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.theme-light .admin-panel {
+  border-color: rgba(148, 163, 184, 0.45);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 12px 30px -22px rgba(15, 23, 42, 0.55);
+}
+
+.theme-light .admin-panel-muted {
+  border-color: rgba(148, 163, 184, 0.45);
+  background: rgba(241, 245, 249, 0.8);
+}
+
+.theme-light .admin-table-wrap {
+  border-color: rgba(148, 163, 184, 0.45);
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.theme-light .admin-table thead {
+  background: rgba(226, 232, 240, 0.8);
+  color: #475569;
+}
+
+.theme-light .admin-table td {
+  color: #0f172a;
+}
+
+.theme-light .admin-input {
+  border-color: rgba(148, 163, 184, 0.55);
+  background: rgba(255, 255, 255, 0.95);
+  color: #0f172a;
+}
+
+.theme-light .admin-input::placeholder {
+  color: #94a3b8;
+}
+
+.theme-light .admin-button {
+  border-color: rgba(148, 163, 184, 0.6);
+  background: rgba(241, 245, 249, 0.9);
+  color: #0f172a;
+}
+
+.theme-light .admin-button:hover {
+  background: rgba(226, 232, 240, 0.95);
+}
+
+.theme-light .admin-button-primary {
+  border-color: rgba(5, 150, 105, 0.35);
+  background: rgba(16, 185, 129, 0.88);
+  color: #ffffff;
+}
+
+.theme-light .admin-chip {
+  border-color: rgba(16, 185, 129, 0.38);
+  background: rgba(16, 185, 129, 0.16);
+  color: #047857;
+}
+
+.theme-light .admin-icon-btn {
+  border-color: rgba(148, 163, 184, 0.6);
+  background: rgba(241, 245, 249, 0.9);
+  color: #334155;
+}
+
+/* Normalize utility-text contrast in light mode without page rewrites */
+.theme-light .text-white {
+  color: #0f172a !important;
+}
+
+.theme-light .text-slate-100 {
+  color: #0f172a !important;
+}
+
+.theme-light .text-slate-200 {
+  color: #1e293b !important;
+}
+
+.theme-light .text-slate-300 {
+  color: #334155 !important;
+}
+
+.theme-light .text-slate-400 {
+  color: #475569 !important;
+}
+
+.theme-light .text-slate-500 {
+  color: #64748b !important;
+}
+
+.theme-light .text-slate-600 {
+  color: #94a3b8 !important;
+}
+
+.theme-light .text-fairway-light {
+  color: #047857 !important;
 }
