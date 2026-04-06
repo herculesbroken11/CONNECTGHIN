@@ -9,7 +9,10 @@ import {
   type ReactNode,
 } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
+import { io, Socket } from 'socket.io-client';
+import { apiJson } from '@/lib/api';
 
 type NavItem = {
   href: string;
@@ -25,16 +28,80 @@ type IconName =
   | 'reports'
   | 'subscriptions'
   | 'audit'
+  | 'notifications'
+  | 'profile'
   | 'settings';
 
 type ToastType = 'success' | 'error' | 'info';
 type Toast = { id: string; message: string; type: ToastType };
 type ToastInput = { message: string; type?: ToastType; durationMs?: number };
+type NotificationItem = {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  isRead: boolean;
+  createdAt: string;
+};
+type AdminMeResponse = {
+  user: {
+    firstName?: string;
+    lastName?: string;
+    username?: string;
+    email?: string;
+    role?: string;
+  };
+};
 const ADMIN_TOAST_EVENT = 'cg-admin-toast';
+const ADMIN_NOTIFICATIONS_CHANGED_EVENT = 'cg-admin-notifications-changed';
+const ADMIN_SOUND_KEY = 'cg_admin_notification_sound';
+const ADMIN_VIBRATE_KEY = 'cg_admin_notification_vibrate';
 
 export function showAdminToast(input: ToastInput) {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new CustomEvent<ToastInput>(ADMIN_TOAST_EVENT, { detail: input }));
+}
+
+export function notifyAdminNotificationsChanged() {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new Event(ADMIN_NOTIFICATIONS_CHANGED_EVENT));
+}
+
+function apiHostFromBase(apiBase: string): string {
+  return apiBase.replace(/\/api\/v1\/?$/, '');
+}
+
+function getAdminClientPref(key: string, fallback: boolean): boolean {
+  if (typeof window === 'undefined') return fallback;
+  const raw = window.localStorage.getItem(key);
+  if (raw == null) return fallback;
+  return raw === '1';
+}
+
+function playNotificationTone() {
+  if (typeof window === 'undefined') return;
+  try {
+    const Ctx = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = 880;
+    gain.gain.value = 0.0001;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    const now = ctx.currentTime;
+    gain.gain.exponentialRampToValueAtTime(0.05, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+    osc.start(now);
+    osc.stop(now + 0.2);
+    setTimeout(() => {
+      void ctx.close();
+    }, 260);
+  } catch {
+    // no-op on unsupported browsers
+  }
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -44,6 +111,8 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/reports', label: 'Reports', section: 'management', icon: 'reports' },
   { href: '/subscriptions', label: 'Subscriptions', section: 'apps', icon: 'subscriptions' },
   { href: '/audit', label: 'Audit Log', section: 'system', icon: 'audit' },
+  { href: '/notifications', label: 'Notifications', section: 'system', icon: 'notifications' },
+  { href: '/profile', label: 'Profile', section: 'system', icon: 'profile' },
   { href: '/settings', label: 'Settings', section: 'system', icon: 'settings' },
 ];
 
@@ -86,9 +155,21 @@ export function AdminShell({
     if (typeof window === 'undefined') return false;
     return window.localStorage.getItem('cg_admin_sidebar_collapsed') === '1';
   });
-  const [accountOpen, setAccountOpen] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const toastTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const [adminIdentity, setAdminIdentity] = useState<AdminMeResponse['user'] | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [recentNotifications, setRecentNotifications] = useState<NotificationItem[]>([]);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(() =>
+    getAdminClientPref(ADMIN_SOUND_KEY, false),
+  );
+  const seenUnreadIdsRef = useRef<Set<string>>(new Set());
+  const initializedNotifsRef = useRef(false);
+  const notifWrapRef = useRef<HTMLDivElement | null>(null);
+  const accountWrapRef = useRef<HTMLDivElement | null>(null);
+  const notifSocketRef = useRef<Socket | null>(null);
   const [darkMode, setDarkMode] = useState<boolean>(() => {
     if (typeof window === 'undefined') return true;
     return window.localStorage.getItem('cg_admin_theme') !== 'light';
@@ -118,13 +199,6 @@ export function AdminShell({
       if (timeout) clearTimeout(timeout);
     };
   }, [collapsed]);
-
-  function logout() {
-    window.localStorage.removeItem('cg_admin_access');
-    window.localStorage.removeItem('cg_admin_refresh');
-    setAccountOpen(false);
-    router.push('/login');
-  }
 
   const grouped = useMemo(
     () => ({
@@ -171,6 +245,138 @@ export function AdminShell({
     return () => window.removeEventListener(ADMIN_TOAST_EVENT, onToast as EventListener);
   }, [pushToast]);
 
+  useEffect(() => {
+    apiJson<AdminMeResponse>('/auth/me')
+      .then((res) => setAdminIdentity(res.user))
+      .catch(() => setAdminIdentity(null));
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    apiJson<{ items: NotificationItem[] }>('/notifications')
+      .then((res) => {
+        if (!active) return;
+        const items = res.items ?? [];
+        setRecentNotifications(items.slice(0, 6));
+        const unread = items.filter((n) => !n.isRead);
+        setUnreadCount(unread.length);
+        seenUnreadIdsRef.current = new Set(unread.map((n) => n.id));
+        initializedNotifsRef.current = true;
+      })
+      .catch(() => {
+        if (!active) return;
+        setUnreadCount(0);
+        setRecentNotifications([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const token = window.localStorage.getItem('cg_admin_access');
+    if (!token) return;
+    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api/v1';
+    const host = apiHostFromBase(apiBase);
+    const socket = io(`${host}/notifications`, {
+      transports: ['websocket'],
+      auth: { token },
+    });
+    notifSocketRef.current = socket;
+
+    socket.on('notification', (n: NotificationItem) => {
+      setRecentNotifications((prev) => [n, ...prev].slice(0, 6));
+      setUnreadCount((v) => v + 1);
+      if (initializedNotifsRef.current && !seenUnreadIdsRef.current.has(n.id)) {
+        if (getAdminClientPref(ADMIN_SOUND_KEY, false)) {
+          playNotificationTone();
+        }
+        if (getAdminClientPref(ADMIN_VIBRATE_KEY, false) && typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+          navigator.vibrate(120);
+        }
+        showAdminToast({
+          message: n.title || 'New notification received.',
+          type: 'info',
+          durationMs: 2200,
+        });
+      }
+      seenUnreadIdsRef.current.add(n.id);
+    });
+
+    return () => {
+      socket.disconnect();
+      notifSocketRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const onChanged = () => {
+      apiJson<{ items: NotificationItem[] }>('/notifications')
+        .then((res) => {
+          const items = res.items ?? [];
+          setRecentNotifications(items.slice(0, 6));
+          const unread = items.filter((n) => !n.isRead);
+          setUnreadCount(unread.length);
+          seenUnreadIdsRef.current = new Set(unread.map((n) => n.id));
+        })
+        .catch(() => {
+          setUnreadCount(0);
+        });
+    };
+    window.addEventListener(ADMIN_NOTIFICATIONS_CHANGED_EVENT, onChanged);
+    return () => window.removeEventListener(ADMIN_NOTIFICATIONS_CHANGED_EVENT, onChanged);
+  }, []);
+
+  useEffect(() => {
+    const syncSoundPref = () => setSoundEnabled(getAdminClientPref(ADMIN_SOUND_KEY, false));
+    window.addEventListener('storage', syncSoundPref);
+    window.addEventListener('focus', syncSoundPref);
+    return () => {
+      window.removeEventListener('storage', syncSoundPref);
+      window.removeEventListener('focus', syncSoundPref);
+    };
+  }, []);
+
+  useEffect(() => {
+    function onClickOutside(event: MouseEvent) {
+      if (!notifWrapRef.current) return;
+      if (!notifWrapRef.current.contains(event.target as Node)) {
+        setNotifOpen(false);
+      }
+    }
+    if (notifOpen) window.addEventListener('mousedown', onClickOutside);
+    return () => window.removeEventListener('mousedown', onClickOutside);
+  }, [notifOpen]);
+
+  useEffect(() => {
+    function onClickOutside(event: MouseEvent) {
+      if (!accountWrapRef.current) return;
+      if (!accountWrapRef.current.contains(event.target as Node)) {
+        setAccountOpen(false);
+      }
+    }
+    if (accountOpen) window.addEventListener('mousedown', onClickOutside);
+    return () => window.removeEventListener('mousedown', onClickOutside);
+  }, [accountOpen]);
+
+  function logout() {
+    window.localStorage.removeItem('cg_admin_access');
+    window.localStorage.removeItem('cg_admin_refresh');
+    setAccountOpen(false);
+    router.push('/login');
+  }
+
+  const displayName =
+    `${adminIdentity?.firstName ?? ''} ${adminIdentity?.lastName ?? ''}`.trim() ||
+    adminIdentity?.username ||
+    'Admin';
+  const displayRole = adminIdentity?.role || 'ADMIN';
+  const displayEmail = adminIdentity?.email || 'admin@connectghin.com';
+  const initials = (
+    `${adminIdentity?.firstName?.[0] ?? ''}${adminIdentity?.lastName?.[0] ?? ''}` ||
+    displayName.slice(0, 2)
+  ).toUpperCase();
+
   return (
     <div className={`min-h-screen ${darkMode ? 'theme-dark text-slate-100' : 'theme-light text-slate-900'}`}>
       <div className="mx-auto flex min-h-screen w-full max-w-none gap-2 px-0 py-0">
@@ -188,9 +394,13 @@ export function AdminShell({
           >
             <div className="admin-rail">
               <div className="flex flex-col items-center gap-2">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-emerald-500/20 text-[11px] font-semibold text-emerald-300">
-                  C
-                </span>
+                <Link
+                  href="/dashboard"
+                  className="inline-flex h-8 w-8 items-center justify-center overflow-hidden rounded-md border border-slate-800 bg-slate-900/60"
+                  title="ConnectGHIN Dashboard"
+                >
+                  <Image src="/logo.jpeg" alt="ConnectGHIN logo" width={28} height={28} className="h-7 w-7 object-contain" />
+                </Link>
                 <button
                   type="button"
                   aria-label="Expand menu"
@@ -216,12 +426,16 @@ export function AdminShell({
               </nav>
 
               <div className="mt-auto flex flex-col items-center gap-2">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-800 bg-slate-900/55 text-xs text-slate-400">
-                  ?
-                </span>
-                <span className="inline-flex h-8 w-8 items-center justify-center border border-slate-800 bg-slate-900/55 text-xs text-slate-400">
-                  •
-                </span>
+                <Link
+                  href="/profile"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-800 bg-slate-900/55 text-slate-300"
+                  aria-label="Account"
+                  title="Account"
+                >
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/20 text-[10px] font-semibold text-emerald-300">
+                    {initials}
+                  </span>
+                </Link>
               </div>
             </div>
           </div>
@@ -236,10 +450,22 @@ export function AdminShell({
             <div className="admin-menu w-[260px] overflow-y-auto">
               <div className="mb-4 flex items-start justify-between border-b border-slate-800/80 pb-3">
                 <div>
-                  <p className="text-sm font-semibold text-white">Apex</p>
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
-                    ConnectGHIN Admin
-                  </p>
+                  <Link href="/dashboard" className="inline-flex items-center gap-2">
+                    <Image
+                      src="/logo.jpeg"
+                      alt="ConnectGHIN logo"
+                      width={28}
+                      height={28}
+                      className="h-7 w-7 rounded object-contain"
+                      priority
+                    />
+                    <span>
+                      <span className="block text-sm font-semibold text-white">ConnectGHIN</span>
+                      <span className="block text-[10px] uppercase tracking-[0.2em] text-slate-500">
+                        Admin Console
+                      </span>
+                    </span>
+                  </Link>
                 </div>
                 <button
                   type="button"
@@ -250,12 +476,31 @@ export function AdminShell({
                   &lt;
                 </button>
               </div>
-              <NavGroup title="Overview" items={grouped.overview} pathname={pathname} />
-              <NavGroup title="Management" items={grouped.management} pathname={pathname} />
-              <NavGroup title="Apps" items={grouped.apps} pathname={pathname} />
-              <NavGroup title="System" items={grouped.system} pathname={pathname} />
-              <div className="mt-auto border-t border-slate-800/80 pt-3 text-xs text-slate-500">
-                Operations Console
+              <NavGroup title="Overview" items={grouped.overview} pathname={pathname} unreadCount={unreadCount} />
+              <NavGroup title="Management" items={grouped.management} pathname={pathname} unreadCount={unreadCount} />
+              <NavGroup title="Apps" items={grouped.apps} pathname={pathname} unreadCount={unreadCount} />
+              <NavGroup title="System" items={grouped.system} pathname={pathname} unreadCount={unreadCount} />
+              <div className="mt-auto border-t border-slate-800/80 pt-3">
+                <Link
+                  href="/profile"
+                  className="flex w-full items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/50 px-2.5 py-2 text-left"
+                  aria-label="Sidebar account"
+                >
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/20 text-[10px] font-semibold text-emerald-300">
+                    {initials}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-xs font-medium text-slate-200">{displayName}</span>
+                    <span className="block truncate text-[11px] text-slate-500">{displayRole}</span>
+                  </span>
+                  <span className="ml-auto text-slate-500">
+                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-none stroke-current stroke-[1.8]">
+                      <path d="M9 6h9v12H9" />
+                      <path d="M14 12H4" />
+                      <path d="m7 9-3 3 3 3" />
+                    </svg>
+                  </span>
+                </Link>
               </div>
             </div>
           </div>
@@ -282,27 +527,94 @@ export function AdminShell({
             >
               {darkMode ? <HeaderIcon type="sun" /> : <HeaderIcon type="moon" />}
             </button>
-            <span className="admin-icon-btn hidden md:inline-flex">
-              <HeaderIcon type="bell" />
-            </span>
-            <div className="relative hidden md:block">
+            <div className="relative hidden md:block" ref={notifWrapRef}>
+              <button
+                type="button"
+                className="admin-icon-btn relative inline-flex"
+                aria-label="Notifications"
+                title="Notifications"
+                onClick={async () => {
+                  setNotifOpen((v) => !v);
+                  if (unreadCount > 0) {
+                    setUnreadCount(0);
+                    setRecentNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+                    try {
+                      await apiJson('/notifications/read-all', { method: 'PATCH' });
+                      notifyAdminNotificationsChanged();
+                    } catch {
+                      // keep UI responsive even if request fails
+                    }
+                  }
+                }}
+              >
+                <HeaderIcon type="bell" />
+                {!soundEnabled ? (
+                  <span
+                    className="absolute -left-1 -bottom-1 inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full border border-slate-700 bg-slate-900 px-1 text-[9px] font-semibold text-slate-300"
+                    title="Notification sound disabled"
+                    aria-label="Notification sound disabled"
+                  >
+                    M
+                  </span>
+                ) : null}
+                {unreadCount > 0 ? (
+                  <span className="absolute -right-1 -top-1 inline-flex min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold text-white">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                ) : null}
+              </button>
+              {notifOpen ? (
+                <div className="absolute right-0 top-10 z-40 w-80 rounded-lg border border-slate-800 bg-[#06120d] p-2 shadow-xl">
+                  <div className="mb-1 px-2 py-1">
+                    <p className="text-xs font-semibold text-slate-200">Notifications</p>
+                  </div>
+                  <div className="max-h-72 overflow-y-auto">
+                    {recentNotifications.length ? (
+                      recentNotifications.map((n) => (
+                        <Link
+                          key={n.id}
+                          href="/notifications"
+                          className="block rounded-md px-2 py-2 hover:bg-slate-800/50"
+                          onClick={() => setNotifOpen(false)}
+                        >
+                          <p className="truncate text-xs font-medium text-slate-200">{n.title}</p>
+                          <p className="truncate text-[11px] text-slate-500">{n.body}</p>
+                        </Link>
+                      ))
+                    ) : (
+                      <p className="px-2 py-3 text-xs text-slate-500">No recent notifications.</p>
+                    )}
+                  </div>
+                  <div className="mt-1 border-t border-slate-800 pt-1 text-center">
+                    <Link
+                      href="/notifications"
+                      className="text-xs text-emerald-300 hover:underline"
+                      onClick={() => setNotifOpen(false)}
+                    >
+                      View all notifications
+                    </Link>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+            <div className="relative hidden md:block" ref={accountWrapRef}>
               <button
                 type="button"
                 className="admin-icon-btn inline-flex !w-auto gap-2 px-2.5 text-[11px] font-medium"
-                onClick={() => setAccountOpen((v) => !v)}
+                aria-label="Account menu"
                 aria-expanded={accountOpen}
                 aria-haspopup="menu"
+                onClick={() => setAccountOpen((v) => !v)}
               >
                 <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-emerald-500/20 text-emerald-300">
-                  AS
+                  {initials}
                 </span>
-                <span className="text-slate-300">Account</span>
               </button>
               {accountOpen ? (
-                <div className="absolute right-0 top-11 z-30 w-56 rounded-lg border border-slate-800 bg-[#05100c] p-1 shadow-xl">
+                <div className="absolute right-0 top-10 z-40 w-56 rounded-lg border border-slate-800 bg-[#06120d] p-1 shadow-xl">
                   <div className="border-b border-slate-800 px-3 py-2">
-                    <p className="text-sm font-medium text-slate-100">Admin</p>
-                    <p className="text-xs text-slate-500">admin@connectghin.com</p>
+                    <p className="text-sm font-medium text-slate-100">{displayName}</p>
+                    <p className="text-xs text-slate-500">{displayEmail}</p>
                   </div>
                   <Link
                     href="/settings"
@@ -311,12 +623,20 @@ export function AdminShell({
                   >
                     Settings
                   </Link>
-                  <button
-                    type="button"
-                    className="block w-full rounded-md px-3 py-2 text-left text-sm text-slate-300 hover:bg-slate-800/60 hover:text-white"
+                  <Link
+                    href="/notifications"
+                    className="block rounded-md px-3 py-2 text-sm text-slate-300 hover:bg-slate-800/60 hover:text-white"
+                    onClick={() => setAccountOpen(false)}
                   >
                     Notifications
-                  </button>
+                  </Link>
+                  <Link
+                    href="/profile"
+                    className="block rounded-md px-3 py-2 text-sm text-slate-300 hover:bg-slate-800/60 hover:text-white"
+                    onClick={() => setAccountOpen(false)}
+                  >
+                    Profile
+                  </Link>
                   <button
                     type="button"
                     className="block w-full rounded-md px-3 py-2 text-left text-sm text-rose-300 hover:bg-rose-500/10"
@@ -350,10 +670,12 @@ function NavGroup({
   title,
   items,
   pathname,
+  unreadCount,
 }: {
   title: string;
   items: NavItem[];
   pathname: string;
+  unreadCount: number;
 }) {
   return (
     <div className="mb-4">
@@ -369,6 +691,11 @@ function NavGroup({
               <AppIcon name={item.icon} />
             </span>
             <span>{item.label}</span>
+            {item.href === '/notifications' && unreadCount > 0 ? (
+              <span className="ml-auto inline-flex min-w-[18px] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-semibold text-white">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            ) : null}
           </Link>
         ))}
       </nav>
@@ -463,6 +790,20 @@ function AppIcon({ name }: { name: IconName }) {
         <svg viewBox="0 0 24 24" className={className}>
           <circle cx="12" cy="12" r="2.5" />
           <path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4.8a7.2 7.2 0 0 0-1.7-1l-.4-2.5H9.6l-.4 2.5a7.2 7.2 0 0 0-1.7 1l-2.4-.8-2 3.4 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-.8a7.2 7.2 0 0 0 1.7 1l.4 2.5h4.8l.4-2.5a7.2 7.2 0 0 0 1.7-1l2.4.8 2-3.4-2-1.5c.1-.3.1-.7.1-1Z" />
+        </svg>
+      );
+    case 'notifications':
+      return (
+        <svg viewBox="0 0 24 24" className={className}>
+          <path d="M12 4a4 4 0 0 0-4 4v2.6c0 .8-.3 1.6-.9 2.2L6 14h12l-1.1-1.2c-.6-.6-.9-1.4-.9-2.2V8a4 4 0 0 0-4-4Z" />
+          <path d="M10.4 16a1.8 1.8 0 0 0 3.2 0" />
+        </svg>
+      );
+    case 'profile':
+      return (
+        <svg viewBox="0 0 24 24" className={className}>
+          <circle cx="12" cy="8" r="3.2" />
+          <path d="M5.8 18c1.4-2.3 3.5-3.4 6.2-3.4s4.8 1.1 6.2 3.4" />
         </svg>
       );
     default:

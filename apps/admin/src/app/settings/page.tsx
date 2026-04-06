@@ -51,6 +51,8 @@ const PREFERENCE_TOGGLES: PreferenceToggle[] = [
     scope: 'Push service',
   },
 ];
+const ADMIN_SOUND_KEY = 'cg_admin_notification_sound';
+const ADMIN_VIBRATE_KEY = 'cg_admin_notification_vibrate';
 
 export default function AppSettingsPage() {
   const [rows, setRows] = useState<Setting[]>([]);
@@ -58,6 +60,14 @@ export default function AppSettingsPage() {
   const [editing, setEditing] = useState<Record<string, string>>({});
   const [tab, setTab] = useState<TabKey>('profile');
   const [savingToggle, setSavingToggle] = useState<string | null>(null);
+  const [clientSoundEnabled, setClientSoundEnabled] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem(ADMIN_SOUND_KEY) === '1';
+  });
+  const [clientVibrateEnabled, setClientVibrateEnabled] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem(ADMIN_VIBRATE_KEY) === '1';
+  });
 
   const load = () => {
     apiJson<Setting[]>('/admin/settings')
@@ -131,6 +141,14 @@ export default function AppSettingsPage() {
     }
   }
 
+  function saveClientPref(key: string, value: boolean, setter: (v: boolean) => void, label: string) {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(key, value ? '1' : '0');
+    }
+    setter(value);
+    showAdminToast({ message: `${label} ${value ? 'enabled' : 'disabled'}.` });
+  }
+
   return (
     <AdminShell title="Settings" subtitle="Manage your account settings and preferences.">
       <div className="mx-auto w-full max-w-6xl">
@@ -200,6 +218,36 @@ export default function AppSettingsPage() {
                     onToggle={(next) => saveToggle(t.key, next)}
                   />
                 ))}
+              </div>
+              <div className="mt-5 border-t border-slate-800/70 pt-4">
+                <p className="mb-2 text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
+                  Admin client alerts
+                </p>
+                <div className="space-y-3">
+                  <PrefRow
+                    title="Notification sound"
+                    subtitle="Play a short sound for incoming realtime notifications."
+                    scope="Admin Web UI"
+                    enabled={clientSoundEnabled}
+                    onToggle={(next) =>
+                      saveClientPref(ADMIN_SOUND_KEY, next, setClientSoundEnabled, 'Notification sound')
+                    }
+                  />
+                  <PrefRow
+                    title="Notification vibration"
+                    subtitle="Vibrate supported devices when realtime notifications arrive."
+                    scope="Admin Web UI"
+                    enabled={clientVibrateEnabled}
+                    onToggle={(next) =>
+                      saveClientPref(
+                        ADMIN_VIBRATE_KEY,
+                        next,
+                        setClientVibrateEnabled,
+                        'Notification vibration',
+                      )
+                    }
+                  />
+                </div>
               </div>
             </section>
           ) : null}

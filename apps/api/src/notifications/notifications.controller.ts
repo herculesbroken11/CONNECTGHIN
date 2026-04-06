@@ -19,8 +19,17 @@ export class NotificationsController {
   constructor(private readonly notifications: NotificationsService) {}
 
   @Get()
-  list(@CurrentUser() user: JwtPayload) {
-    return this.notifications.list(user.sub);
+  list(
+    @CurrentUser() user: JwtPayload,
+    @Query('status') status?: 'all' | 'unread' | 'read',
+    @Query('type') type?: string,
+  ) {
+    return this.notifications.list(user.sub, status ?? 'all', type);
+  }
+
+  @Get('unread-count')
+  unreadCount(@CurrentUser() user: JwtPayload) {
+    return this.notifications.unreadCount(user.sub);
   }
 
   @Patch(':id/read')
@@ -29,6 +38,19 @@ export class NotificationsController {
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     return this.notifications.markRead(user.sub, id);
+  }
+
+  @Patch(':id/unread')
+  unread(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.notifications.markUnread(user.sub, id);
+  }
+
+  @Patch('read-all')
+  readAll(@CurrentUser() user: JwtPayload) {
+    return this.notifications.markAllRead(user.sub);
   }
 }
 

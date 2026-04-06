@@ -6,9 +6,19 @@ import { DevicePlatform } from '@prisma/client';
 export class NotificationsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list(userId: string) {
+  async list(
+    userId: string,
+    status: 'all' | 'unread' | 'read' = 'all',
+    type?: string,
+  ) {
+    const where = {
+      userId,
+      ...(status === 'read' ? { isRead: true } : {}),
+      ...(status === 'unread' ? { isRead: false } : {}),
+      ...(type?.length ? { type } : {}),
+    };
     const items = await this.prisma.notification.findMany({
-      where: { userId },
+      where,
       orderBy: { createdAt: 'desc' },
       take: 100,
     });
@@ -24,6 +34,32 @@ export class NotificationsService {
       where: { id },
       data: { isRead: true },
     });
+  }
+
+  async markUnread(userId: string, id: string) {
+    const n = await this.prisma.notification.findFirst({
+      where: { id, userId },
+    });
+    if (!n) throw new NotFoundException();
+    return this.prisma.notification.update({
+      where: { id },
+      data: { isRead: false },
+    });
+  }
+
+  async markAllRead(userId: string) {
+    await this.prisma.notification.updateMany({
+      where: { userId, isRead: false },
+      data: { isRead: true },
+    });
+    return { ok: true };
+  }
+
+  async unreadCount(userId: string) {
+    const count = await this.prisma.notification.count({
+      where: { userId, isRead: false },
+    });
+    return { count };
   }
 
   async registerToken(
