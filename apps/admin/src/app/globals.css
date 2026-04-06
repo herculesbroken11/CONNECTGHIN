@@ -25,11 +25,11 @@ body {
 
 @layer components {
   .admin-rail {
-    @apply flex min-h-[calc(100vh-1.5rem)] w-[56px] flex-col rounded-xl border border-slate-800/90 bg-[#030b09] p-2;
+    @apply flex h-screen w-[56px] flex-col border border-slate-800/90 bg-[#030b09] p-2;
   }
 
   .admin-menu {
-    @apply flex min-h-[calc(100vh-1.5rem)] flex-col rounded-xl border border-slate-800/90 bg-[#030b09]/95 p-3;
+    @apply flex h-screen flex-col border border-slate-800/90 bg-[#030b09]/95 p-3;
   }
 
   .admin-topbar {
@@ -90,18 +90,28 @@ body {
 }
 
 .theme-light .admin-rail {
-  border-color: rgba(148, 163, 184, 0.45);
-  background: rgba(248, 250, 252, 0.95);
+  border-color: rgba(30, 41, 59, 0.7);
+  background: #030b09;
 }
 
 .theme-light .admin-menu {
-  border-color: rgba(148, 163, 184, 0.45);
-  background: rgba(248, 250, 252, 0.96);
+  border-color: rgba(30, 41, 59, 0.7);
+  background: rgba(3, 11, 9, 0.96);
 }
 
 .theme-light .admin-topbar {
-  border-color: rgba(148, 163, 184, 0.45);
-  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(203, 213, 225, 0.9);
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.theme-light .admin-topbar input {
+  border-color: rgba(203, 213, 225, 0.95) !important;
+  background: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+.theme-light .admin-topbar input::placeholder {
+  color: #94a3b8 !important;
 }
 
 .theme-light .admin-panel {
@@ -163,39 +173,90 @@ body {
 
 .theme-light .admin-icon-btn {
   border-color: rgba(148, 163, 184, 0.6);
-  background: rgba(241, 245, 249, 0.9);
+  background: rgba(248, 250, 252, 0.96);
   color: #334155;
 }
 
 /* Normalize utility-text contrast in light mode without page rewrites */
-.theme-light .text-white {
+.theme-light main .text-white {
   color: #0f172a !important;
 }
 
-.theme-light .text-slate-100 {
+.theme-light main .text-slate-100 {
   color: #0f172a !important;
 }
 
-.theme-light .text-slate-200 {
+.theme-light main .text-slate-200 {
   color: #1e293b !important;
 }
 
-.theme-light .text-slate-300 {
+.theme-light main .text-slate-300 {
   color: #334155 !important;
 }
 
-.theme-light .text-slate-400 {
+.theme-light main .text-slate-400 {
   color: #475569 !important;
 }
 
-.theme-light .text-slate-500 {
+.theme-light main .text-slate-500 {
   color: #64748b !important;
 }
 
-.theme-light .text-slate-600 {
+.theme-light main .text-slate-600 {
   color: #94a3b8 !important;
 }
 
-.theme-light .text-fairway-light {
+.theme-light main .text-fairway-light {
   color: #047857 !important;
+}
+
+/* Keep light mode surfaces consistent (avoid mixed dark patches) */
+.theme-light main .bg-slate-950,
+.theme-light main .bg-slate-950\/80,
+.theme-light main .bg-slate-950\/60 {
+  background-color: #ffffff !important;
+}
+
+.theme-light main .bg-slate-900,
+.theme-light main .bg-slate-900\/80,
+.theme-light main .bg-slate-900\/70,
+.theme-light main .bg-slate-900\/60,
+.theme-light main .bg-slate-900\/50,
+.theme-light main .bg-slate-900\/40,
+.theme-light main .bg-slate-900\/35 {
+  background-color: #f8fafc !important;
+}
+
+.theme-light main .bg-slate-800,
+.theme-light main .bg-slate-800\/70,
+.theme-light main .bg-slate-800\/60 {
+  background-color: #f1f5f9 !important;
+}
+
+.theme-light main .border-slate-900,
+.theme-light main .border-slate-800,
+.theme-light main .border-slate-800\/90,
+.theme-light main .border-slate-800\/80,
+.theme-light main .border-slate-700,
+.theme-light main .border-slate-700\/80 {
+  border-color: #cbd5e1 !important;
+}
+
+/* Preserve accent colors with clear hierarchy */
+.theme-light main .text-emerald-200 {
+  color: #059669 !important;
+}
+
+.theme-light main .text-emerald-300,
+.theme-light main .text-emerald-400 {
+  color: #10b981 !important;
+}
+
+.theme-light main .text-rose-300,
+.theme-light main .text-red-400 {
+  color: #e11d48 !important;
+}
+
+.theme-light main .text-amber-400 {
+  color: #d97706 !important;
 }

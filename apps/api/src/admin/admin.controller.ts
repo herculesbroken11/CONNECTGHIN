@@ -13,6 +13,8 @@ import { AdminService } from './admin.service';
 import { AdminLoginDto } from './dto/admin-login.dto';
 import { SuspendUserDto } from './dto/suspend-user.dto';
 import { ReviewReportDto } from './dto/review-report.dto';
+import { UpdateUserRoleDto } from './dto/update-user-role.dto';
+import { UpdateAdminUserDto } from './dto/update-admin-user.dto';
 import { Public } from '@/common/decorators/public.decorator';
 import { Roles } from '@/common/decorators/roles.decorator';
 import { RolesGuard } from '@/common/guards/roles.guard';
@@ -56,6 +58,15 @@ export class AdminApiController {
     return this.admin.getUser(id);
   }
 
+  @Patch('users/:id')
+  updateUser(
+    @CurrentUser() admin: JwtPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateAdminUserDto,
+  ) {
+    return this.admin.updateUser(admin.sub, id, dto);
+  }
+
   @Patch('users/:id/suspend')
   suspend(
     @CurrentUser() admin: JwtPayload,
@@ -80,6 +91,23 @@ export class AdminApiController {
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     return this.admin.restore(admin.sub, id);
+  }
+
+  @Patch('users/:id/role')
+  updateUserRole(
+    @CurrentUser() admin: JwtPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateUserRoleDto,
+  ) {
+    return this.admin.updateUserRole(admin.sub, id, dto.role);
+  }
+
+  @Patch('users/:id/delete')
+  deleteUser(
+    @CurrentUser() admin: JwtPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.admin.softDeleteUser(admin.sub, id);
   }
 
   @Patch('users/:id/verify-ghin')

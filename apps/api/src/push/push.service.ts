@@ -1,9 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/prisma/prisma.service';
+import { AppSettingsService } from '@/app-settings/app-settings.service';
 
 /**
- * FCM abstraction: persists in-app notifications always; push when configured.
+ * FCM abstraction: persists in-app notifications and push delivery based on runtime app settings.
  * Wire firebase-admin in production via FIREBASE_SERVICE_ACCOUNT_PATH.
  */
 @Injectable()
@@ -13,6 +14,7 @@ export class PushService {
   constructor(
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly settings: AppSettingsService,
   ) {}
 
   async notifyUser(
@@ -22,18 +24,25 @@ export class PushService {
     body: string,
     data?: Record<string, string>,
   ) {
-    await this.prisma.notification.create({
-      data: {
-        userId,
-        type,
-        title,
-        body,
-        dataJson: data ? JSON.stringify(data) : undefined,
-      },
-    });
+    const [inAppEnabled, pushEnabled] = await Promise.all([
+      this.settings.inAppNotificationsEnabled(),
+      this.settings.pushNotificationsEnabled(),
+    ]);
+
+    if (inAppEnabled) {
+      await this.prisma.notification.create({
+        data: {
+          userId,
+          type,
+          title,
+          body,
+          dataJson: data ? JSON.stringify(data) : undefined,
+        },
+      });
+    }
 
     const fcmPath = this.config.get<string>('FIREBASE_SERVICE_ACCOUNT_PATH');
-    if (!fcmPath) {
+    if (!pushEnabled || !fcmPath) {
       this.logger.debug(`FCM skipped (no config): ${type} -> ${userId}`);
       return;
     }

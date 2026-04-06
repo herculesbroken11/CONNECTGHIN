@@ -60,14 +60,17 @@ export class SwipesService {
 
     const premium = await this.membership.isPremiumEffective(fromUser);
     if (!premium) {
-      const limit = await this.settings.freeDailySwipeLimit();
-      const start = new Date();
-      start.setUTCHours(0, 0, 0, 0);
-      const count = await this.prisma.swipe.count({
-        where: { fromUserId, createdAt: { gte: start } },
-      });
-      if (count >= limit) {
-        throw new ForbiddenException('Daily swipe limit reached. Upgrade to Premium.');
+      const enabled = await this.settings.freeDailySwipeLimitEnabled();
+      if (enabled) {
+        const limit = await this.settings.freeDailySwipeLimit();
+        const start = new Date();
+        start.setUTCHours(0, 0, 0, 0);
+        const count = await this.prisma.swipe.count({
+          where: { fromUserId, createdAt: { gte: start } },
+        });
+        if (count >= limit) {
+          throw new ForbiddenException('Daily swipe limit reached. Upgrade to Premium.');
+        }
       }
     }
 

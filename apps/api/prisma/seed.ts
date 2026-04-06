@@ -47,8 +47,11 @@ async function main() {
     { key: 'premium_currency', valueJson: JSON.stringify('usd') },
     { key: 'trial_days', valueJson: JSON.stringify(7) },
     { key: 'free_daily_swipe_limit', valueJson: JSON.stringify(10) },
+    { key: 'free_daily_swipe_limit_enabled', valueJson: JSON.stringify(true) },
     { key: 'premium_direct_messaging_enabled', valueJson: JSON.stringify(false) },
     { key: 'premium_trialing_features_enabled', valueJson: JSON.stringify(true) },
+    { key: 'in_app_notifications_enabled', valueJson: JSON.stringify(true) },
+    { key: 'push_notifications_enabled', valueJson: JSON.stringify(true) },
   ];
 
   for (const row of defaults) {

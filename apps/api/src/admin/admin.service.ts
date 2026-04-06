@@ -10,6 +10,7 @@ import { PrismaService } from '@/prisma/prisma.service';
 import { AdminLoginDto } from './dto/admin-login.dto';
 import { SuspendUserDto } from './dto/suspend-user.dto';
 import { ReviewReportDto } from './dto/review-report.dto';
+import { UpdateAdminUserDto } from './dto/update-admin-user.dto';
 import { JwtPayload } from '@/auth/types/jwt-payload.type';
 import { UserRole, ReportStatus, MembershipType } from '@prisma/client';
 
@@ -142,6 +143,75 @@ export class AdminService {
     return rest;
   }
 
+  async updateUser(adminId: string, userId: string, dto: UpdateAdminUserDto) {
+    const existing = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true, isActive: true, isSuspended: true },
+    });
+    if (!existing) throw new NotFoundException();
+
+    const userPatch = {
+      email: dto.email?.toLowerCase(),
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      username: dto.username?.toLowerCase(),
+      role: dto.role,
+      membershipType: dto.membershipType,
+      isActive: dto.isActive,
+      isSuspended: dto.isSuspended,
+    };
+    const cleanedUserPatch = Object.fromEntries(
+      Object.entries(userPatch).filter(([, v]) => v !== undefined),
+    );
+
+    if (Object.keys(cleanedUserPatch).length > 0) {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: cleanedUserPatch,
+      });
+    }
+
+    if (dto.profile) {
+      await this.prisma.profile.upsert({
+        where: { userId },
+        create: {
+          userId,
+          displayName:
+            dto.profile.displayName ??
+            `${dto.firstName ?? ''} ${dto.lastName ?? ''}`.trim() ??
+            'User',
+          bio: dto.profile.bio,
+          age: dto.profile.age,
+          handicap: dto.profile.handicap,
+          city: dto.profile.city,
+          state: dto.profile.state,
+          country: dto.profile.country,
+          drinkingPreference: dto.profile.drinkingPreference,
+          smokingPreference: dto.profile.smokingPreference,
+          musicPreference: dto.profile.musicPreference,
+        },
+        update: {
+          displayName: dto.profile.displayName,
+          bio: dto.profile.bio,
+          age: dto.profile.age,
+          handicap: dto.profile.handicap,
+          city: dto.profile.city,
+          state: dto.profile.state,
+          country: dto.profile.country,
+          drinkingPreference: dto.profile.drinkingPreference,
+          smokingPreference: dto.profile.smokingPreference,
+          musicPreference: dto.profile.musicPreference,
+        },
+      });
+    }
+
+    await this.audit(adminId, 'USER_UPDATE', userId, {
+      fields: Object.keys(cleanedUserPatch),
+      profileUpdated: Boolean(dto.profile),
+    });
+    return { ok: true };
+  }
+
   async suspend(adminId: string, userId: string, dto: SuspendUserDto) {
     await this.prisma.user.update({
       where: { id: userId },
@@ -174,6 +244,38 @@ export class AdminService {
       },
     });
     await this.audit(adminId, 'USER_RESTORE', userId);
+    return { ok: true };
+  }
+
+  async updateUserRole(adminId: string, userId: string, role: UserRole) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+    if (!user) throw new NotFoundException();
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { role },
+    });
+
+    await this.audit(adminId, 'USER_ROLE_UPDATE', userId, {
+      previousRole: user.role,
+      role,
+    });
+    return { ok: true };
+  }
+
+  async softDeleteUser(adminId: string, userId: string) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        isActive: false,
+        isSuspended: true,
+        suspensionReason: 'Deleted by admin',
+      },
+    });
+    await this.audit(adminId, 'USER_DELETE_SOFT', userId);
     return { ok: true };
   }
 

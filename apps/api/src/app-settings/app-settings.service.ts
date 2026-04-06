@@ -3,8 +3,11 @@ import { PrismaService } from '@/prisma/prisma.service';
 
 const KEYS = {
   FREE_DAILY_SWIPE_LIMIT: 'free_daily_swipe_limit',
+  FREE_DAILY_SWIPE_LIMIT_ENABLED: 'free_daily_swipe_limit_enabled',
   PREMIUM_DIRECT_MESSAGING: 'premium_direct_messaging_enabled',
   PREMIUM_TRIALING_FEATURES: 'premium_trialing_features_enabled',
+  IN_APP_NOTIFICATIONS_ENABLED: 'in_app_notifications_enabled',
+  PUSH_NOTIFICATIONS_ENABLED: 'push_notifications_enabled',
   TRIAL_DAYS: 'trial_days',
 } as const;
 
@@ -51,12 +54,24 @@ export class AppSettingsService {
     return this.getNumber(KEYS.FREE_DAILY_SWIPE_LIMIT, 10);
   }
 
+  async freeDailySwipeLimitEnabled(): Promise<boolean> {
+    return this.getBoolean(KEYS.FREE_DAILY_SWIPE_LIMIT_ENABLED, true);
+  }
+
   async premiumDirectMessagingEnabled(): Promise<boolean> {
     return this.getBoolean(KEYS.PREMIUM_DIRECT_MESSAGING, false);
   }
 
   async premiumTrialingFeaturesEnabled(): Promise<boolean> {
     return this.getBoolean(KEYS.PREMIUM_TRIALING_FEATURES, true);
+  }
+
+  async inAppNotificationsEnabled(): Promise<boolean> {
+    return this.getBoolean(KEYS.IN_APP_NOTIFICATIONS_ENABLED, true);
+  }
+
+  async pushNotificationsEnabled(): Promise<boolean> {
+    return this.getBoolean(KEYS.PUSH_NOTIFICATIONS_ENABLED, true);
   }
 
   async trialDays(): Promise<number> {

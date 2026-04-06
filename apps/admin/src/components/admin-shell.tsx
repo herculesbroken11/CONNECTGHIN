@@ -1,6 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 
@@ -19,6 +26,16 @@ type IconName =
   | 'subscriptions'
   | 'audit'
   | 'settings';
+
+type ToastType = 'success' | 'error' | 'info';
+type Toast = { id: string; message: string; type: ToastType };
+type ToastInput = { message: string; type?: ToastType; durationMs?: number };
+const ADMIN_TOAST_EVENT = 'cg-admin-toast';
+
+export function showAdminToast(input: ToastInput) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent<ToastInput>(ADMIN_TOAST_EVENT, { detail: input }));
+}
 
 const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', section: 'overview', icon: 'dashboard' },
@@ -61,16 +78,21 @@ export function AdminShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem('cg_admin_sidebar_collapsed') === '1';
+  });
+  const [showCollapsedContent, setShowCollapsedContent] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem('cg_admin_sidebar_collapsed') === '1';
+  });
   const [accountOpen, setAccountOpen] = useState(false);
-  const [darkMode, setDarkMode] = useState(true);
-
-  useEffect(() => {
-    const v = window.localStorage.getItem('cg_admin_sidebar_collapsed');
-    if (v === '1') setCollapsed(true);
-    const theme = window.localStorage.getItem('cg_admin_theme');
-    if (theme === 'light') setDarkMode(false);
-  }, []);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const toastTimersRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    return window.localStorage.getItem('cg_admin_theme') !== 'light';
+  });
 
   useEffect(() => {
     window.localStorage.setItem('cg_admin_theme', darkMode ? 'dark' : 'light');
@@ -84,6 +106,18 @@ export function AdminShell({
       return next;
     });
   }
+
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    if (collapsed) {
+      timeout = setTimeout(() => setShowCollapsedContent(true), 400);
+    } else {
+      setShowCollapsedContent(false);
+    }
+    return () => {
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [collapsed]);
 
   function logout() {
     window.localStorage.removeItem('cg_admin_access');
@@ -102,56 +136,119 @@ export function AdminShell({
     [],
   );
 
+  const dismissToast = useCallback((id: string) => {
+    const timer = toastTimersRef.current[id];
+    if (timer) {
+      clearTimeout(timer);
+      delete toastTimersRef.current[id];
+    }
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  const pushToast = useCallback(
+    ({ message, type = 'success', durationMs = 2800 }: ToastInput) => {
+      const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      setToasts((prev) => [...prev, { id, message, type }]);
+      toastTimersRef.current[id] = setTimeout(() => dismissToast(id), durationMs);
+    },
+    [dismissToast],
+  );
+
+  useEffect(() => {
+    return () => {
+      for (const timer of Object.values(toastTimersRef.current)) clearTimeout(timer);
+      toastTimersRef.current = {};
+    };
+  }, []);
+
+  useEffect(() => {
+    function onToast(event: Event) {
+      const custom = event as CustomEvent<ToastInput>;
+      if (!custom.detail?.message) return;
+      pushToast(custom.detail);
+    }
+    window.addEventListener(ADMIN_TOAST_EVENT, onToast as EventListener);
+    return () => window.removeEventListener(ADMIN_TOAST_EVENT, onToast as EventListener);
+  }, [pushToast]);
+
   return (
     <div className={`min-h-screen ${darkMode ? 'theme-dark text-slate-100' : 'theme-light text-slate-900'}`}>
-      <div className="mx-auto flex w-full max-w-[1600px] gap-3 px-3 py-3">
-        <aside className="hidden md:flex">
-          <div className="admin-rail mr-2">
-            <div className="flex flex-col items-center gap-2">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-emerald-500/20 text-[11px] font-semibold text-emerald-300">
-                C
-              </span>
-              <button
-                type="button"
-                aria-label={collapsed ? 'Expand menu' : 'Collapse menu'}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-800 bg-slate-900/55 text-xs text-slate-300"
-                onClick={toggleMenu}
-              >
-                {collapsed ? '>' : '<'}
-              </button>
-            </div>
-
-            <nav className="mt-3 flex flex-1 flex-col items-center gap-2">
-              {NAV_ITEMS.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={getRailIconClass(isActive(pathname, item.href))}
-                  title={item.label}
-                  aria-label={item.label}
+      <div className="mx-auto flex min-h-screen w-full max-w-none gap-2 px-0 py-0">
+        <aside
+          className={`sticky top-0 hidden h-screen self-start overflow-hidden transition-[width] duration-[400ms] ease-out md:flex ${
+            collapsed ? 'w-[56px]' : 'w-[260px]'
+          }`}
+        >
+          <div
+            className={
+              showCollapsedContent
+                ? 'pointer-events-auto'
+                : 'pointer-events-none absolute opacity-0'
+            }
+          >
+            <div className="admin-rail">
+              <div className="flex flex-col items-center gap-2">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-emerald-500/20 text-[11px] font-semibold text-emerald-300">
+                  C
+                </span>
+                <button
+                  type="button"
+                  aria-label="Expand menu"
+                  className="inline-flex h-8 w-8 items-center justify-center border border-slate-800 bg-slate-900/55 text-xs text-slate-300"
+                  onClick={toggleMenu}
                 >
-                  <AppIcon name={item.icon} />
-                </Link>
-              ))}
-            </nav>
+                  &gt;
+                </button>
+              </div>
 
-            <div className="mt-auto flex flex-col items-center gap-2">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-800 bg-slate-900/55 text-xs text-slate-400">
-                ?
-              </span>
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-800 bg-slate-900/55 text-xs text-slate-400">
-                •
-              </span>
+              <nav className="mt-3 flex flex-1 flex-col items-center gap-2">
+                {NAV_ITEMS.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={getRailIconClass(isActive(pathname, item.href))}
+                    title={item.label}
+                    aria-label={item.label}
+                  >
+                    <AppIcon name={item.icon} />
+                  </Link>
+                ))}
+              </nav>
+
+              <div className="mt-auto flex flex-col items-center gap-2">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-800 bg-slate-900/55 text-xs text-slate-400">
+                  ?
+                </span>
+                <span className="inline-flex h-8 w-8 items-center justify-center border border-slate-800 bg-slate-900/55 text-xs text-slate-400">
+                  •
+                </span>
+              </div>
             </div>
           </div>
 
-          {!collapsed ? (
-            <div className="admin-menu w-[220px]">
-              <div className="mb-4 border-b border-slate-800/80 pb-3">
-                <p className="text-sm font-semibold text-white">Apex</p>
-                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
-                  ConnectGHIN Admin
-                </p>
+          <div
+            className={
+              showCollapsedContent
+                ? 'pointer-events-none absolute opacity-0'
+                : 'pointer-events-auto'
+            }
+          >
+            <div className="admin-menu w-[260px] overflow-y-auto">
+              <div className="mb-4 flex items-start justify-between border-b border-slate-800/80 pb-3">
+                <div>
+                  <p className="text-sm font-semibold text-white">Apex</p>
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
+                    ConnectGHIN Admin
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Collapse menu"
+                  className="inline-flex h-7 w-7 items-center justify-center border border-slate-800 bg-slate-900/55 text-xs text-slate-300"
+                  onClick={toggleMenu}
+                >
+                  &lt;
+                </button>
               </div>
               <NavGroup title="Overview" items={grouped.overview} pathname={pathname} />
               <NavGroup title="Management" items={grouped.management} pathname={pathname} />
@@ -161,7 +258,7 @@ export function AdminShell({
                 Operations Console
               </div>
             </div>
-          ) : null}
+          </div>
         </aside>
 
         <main className="min-w-0 flex-1">
@@ -244,6 +341,7 @@ export function AdminShell({
           </div>
         </main>
       </div>
+      <ToastViewport toasts={toasts} onClose={dismissToast} />
     </div>
   );
 }
@@ -370,4 +468,44 @@ function AppIcon({ name }: { name: IconName }) {
     default:
       return null;
   }
+}
+
+function ToastViewport({
+  toasts,
+  onClose,
+}: {
+  toasts: Toast[];
+  onClose: (id: string) => void;
+}) {
+  return (
+    <div className="pointer-events-none fixed right-4 top-4 z-[70] flex w-full max-w-sm flex-col gap-2">
+      {toasts.map((t) => (
+        <div
+          key={t.id}
+          className={`pointer-events-auto flex items-start gap-2 rounded-lg border px-3 py-2 shadow-lg ${
+            t.type === 'error'
+              ? 'border-rose-700/40 bg-rose-950/90 text-rose-100'
+              : t.type === 'info'
+                ? 'border-sky-700/40 bg-sky-950/90 text-sky-100'
+                : 'border-emerald-700/40 bg-emerald-950/90 text-emerald-100'
+          }`}
+          role="status"
+          aria-live="polite"
+        >
+          <span className="mt-0.5 text-xs">
+            {t.type === 'error' ? '!' : t.type === 'info' ? 'i' : '✓'}
+          </span>
+          <p className="flex-1 text-sm">{t.message}</p>
+          <button
+            type="button"
+            className="text-xs opacity-70 hover:opacity-100"
+            onClick={() => onClose(t.id)}
+            aria-label="Dismiss notification"
+          >
+            ×
+          </button>
+        </div>
+      ))}
+    </div>
+  );
 }

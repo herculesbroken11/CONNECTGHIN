@@ -2,16 +2,62 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { apiJson } from '@/lib/api';
-import { AdminShell } from '@/components/admin-shell';
+import { AdminShell, showAdminToast } from '@/components/admin-shell';
 
 type Setting = { id: string; key: string; valueJson: string };
 type TabKey = 'profile' | 'preferences' | 'appearance';
+type PreferenceToggle = {
+  key: string;
+  title: string;
+  subtitle: string;
+  defaultValue: boolean;
+  scope: string;
+};
+
+const PREFERENCE_TOGGLES: PreferenceToggle[] = [
+  {
+    key: 'free_daily_swipe_limit_enabled',
+    title: 'Free daily swipe limit',
+    subtitle: 'Enforce daily swipe limits for free users.',
+    defaultValue: true,
+    scope: 'Swipes service',
+  },
+  {
+    key: 'premium_direct_messaging_enabled',
+    title: 'Premium direct messaging',
+    subtitle: 'Allow premium users to message without a match.',
+    defaultValue: false,
+    scope: 'Messaging service',
+  },
+  {
+    key: 'premium_trialing_features_enabled',
+    title: 'Trial premium features',
+    subtitle: 'Grant premium access while subscription is trialing.',
+    defaultValue: true,
+    scope: 'Subscriptions service',
+  },
+  {
+    key: 'in_app_notifications_enabled',
+    title: 'In-app notifications',
+    subtitle: 'Store and show in-app notification records.',
+    defaultValue: true,
+    scope: 'Push + Notifications',
+  },
+  {
+    key: 'push_notifications_enabled',
+    title: 'Push notifications',
+    subtitle: 'Send push notifications when push provider is configured.',
+    defaultValue: true,
+    scope: 'Push service',
+  },
+];
 
 export default function AppSettingsPage() {
   const [rows, setRows] = useState<Setting[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [editing, setEditing] = useState<Record<string, string>>({});
   const [tab, setTab] = useState<TabKey>('profile');
+  const [savingToggle, setSavingToggle] = useState<string | null>(null);
 
   const load = () => {
     apiJson<Setting[]>('/admin/settings')
@@ -37,8 +83,51 @@ export default function AppSettingsPage() {
         return n;
       });
       load();
+      showAdminToast({ message: 'Setting updated successfully.' });
     } catch (e) {
       setErr(String((e as Error).message));
+      showAdminToast({ message: String((e as Error).message), type: 'error' });
+    }
+  }
+
+  function rawValue(key: string): string | undefined {
+    return rows.find((r) => r.key === key)?.valueJson;
+  }
+
+  function boolValue(key: string, fallback: boolean): boolean {
+    const raw = rawValue(key);
+    if (raw == null) return fallback;
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      return typeof parsed === 'boolean' ? parsed : fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
+  async function saveToggle(key: string, value: boolean) {
+    setSavingToggle(key);
+    setErr(null);
+    try {
+      await apiJson(`/admin/settings/${encodeURIComponent(key)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ value }),
+      });
+      setRows((prev) => {
+        const i = prev.findIndex((r) => r.key === key);
+        if (i >= 0) {
+          const next = [...prev];
+          next[i] = { ...next[i], valueJson: JSON.stringify(value) };
+          return next;
+        }
+        return [...prev, { id: `new-${key}`, key, valueJson: JSON.stringify(value) }];
+      });
+      showAdminToast({ message: 'Preference updated successfully.' });
+    } catch (e) {
+      setErr(String((e as Error).message));
+      showAdminToast({ message: String((e as Error).message), type: 'error' });
+    } finally {
+      setSavingToggle(null);
     }
   }
 
@@ -97,14 +186,20 @@ export default function AppSettingsPage() {
             <section>
               <h3 className="text-base font-semibold text-white">Preferences</h3>
               <p className="mt-1 text-xs text-slate-500">
-                Notification and communication preferences.
+                Runtime feature toggles used by backend services.
               </p>
               <div className="mt-4 space-y-3">
-                <PrefRow title="Order notifications" subtitle="Receive emails for status changes" enabled />
-                <PrefRow title="Marketing emails" subtitle="Receive product and promotion updates" />
-                <PrefRow title="Security alerts" subtitle="Get notified about suspicious account activity" enabled />
-                <PrefRow title="Push notifications" subtitle="Receive in-app updates for critical actions" enabled />
-                <PrefRow title="Weekly digest" subtitle="Summary of weekly admin metrics" />
+                {PREFERENCE_TOGGLES.map((t) => (
+                  <PrefRow
+                    key={t.key}
+                    title={t.title}
+                    subtitle={t.subtitle}
+                    scope={t.scope}
+                    enabled={boolValue(t.key, t.defaultValue)}
+                    disabled={savingToggle === t.key}
+                    onToggle={(next) => saveToggle(t.key, next)}
+                  />
+                ))}
               </div>
             </section>
           ) : null}
@@ -168,31 +263,44 @@ function TabButton({
 function PrefRow({
   title,
   subtitle,
+  scope,
   enabled = false,
+  disabled = false,
+  onToggle,
 }: {
   title: string;
   subtitle: string;
+  scope: string;
   enabled?: boolean;
+  disabled?: boolean;
+  onToggle: (next: boolean) => void;
 }) {
   return (
     <div className="admin-panel-muted flex items-center justify-between px-3 py-2">
       <div>
         <p className="text-sm text-slate-200">{title}</p>
         <p className="text-xs text-slate-500">{subtitle}</p>
+        <span className="mt-1 inline-flex rounded-full border border-slate-700/80 px-2 py-0.5 text-[10px] uppercase tracking-[0.08em] text-slate-400">
+          {scope}
+        </span>
       </div>
-      <span
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => onToggle(!enabled)}
+        aria-pressed={enabled}
         className={`inline-flex h-5 w-9 items-center rounded-full border ${
           enabled
             ? 'border-emerald-500/40 bg-emerald-500/25'
             : 'border-slate-700 bg-slate-800/70'
-        }`}
+        } ${disabled ? 'opacity-60' : ''}`}
       >
         <span
           className={`mx-0.5 h-3.5 w-3.5 rounded-full ${
             enabled ? 'translate-x-3.5 bg-emerald-300' : 'bg-slate-500'
           } transition`}
         />
-      </span>
+      </button>
     </div>
   );
 }
