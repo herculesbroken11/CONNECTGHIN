@@ -38,8 +38,8 @@ import { RedisModule } from './redis/redis.module';
     }),
     RedisModule,
     EventEmitterModule.forRoot({ wildcard: false, delimiter: '.' }),
-    ThrottlerRedisModule,
     ThrottlerModule.forRootAsync({
+      imports: [ThrottlerRedisModule],
       inject: [RedisThrottlerStorage],
       useFactory: (storage: RedisThrottlerStorage) => ({
         throttlers: [

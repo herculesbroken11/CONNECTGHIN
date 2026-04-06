@@ -7,7 +7,7 @@ FROM node:20-alpine AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-ARG DATABASE_URL=postgresql://connectghin:connectghin@localhost:5432/connectghin
+ARG DATABASE_URL=postgresql://connectghin_app:connectghin_local_dev@localhost:5432/connectghin
 ENV DATABASE_URL=$DATABASE_URL
 RUN npx prisma generate
 RUN npm run build

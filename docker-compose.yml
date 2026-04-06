@@ -2,15 +2,15 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: connectghin
-      POSTGRES_PASSWORD: connectghin
+      POSTGRES_USER: connectghin_app
+      POSTGRES_PASSWORD: connectghin_local_dev
       POSTGRES_DB: connectghin
     ports:
       - "5432:5432"
     volumes:
       - connectghin_pg:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U connectghin -d connectghin"]
+      test: ["CMD-SHELL", "pg_isready -U connectghin_app -d connectghin"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -32,7 +32,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: postgresql://connectghin:connectghin@postgres:5432/connectghin?schema=public
+      DATABASE_URL: postgresql://connectghin_app:connectghin_local_dev@postgres:5432/connectghin?schema=public
       REDIS_URL: redis://redis:6379
       NODE_ENV: production
       API_PORT: "3000"
