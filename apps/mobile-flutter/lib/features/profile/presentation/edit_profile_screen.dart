@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:connectghin/core/util/api_error_message.dart';
 import 'package:connectghin/features/app/data/app_repositories_provider.dart';
+import 'package:connectghin/features/profile/domain/user_profile_models.dart';
+import 'package:connectghin/features/profile/presentation/widgets/profile_photo_slot.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
@@ -23,6 +25,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   String _music = 'ANY';
   bool _loading = true;
   bool _saving = false;
+  bool _uploadingPhoto = false;
+  ProfilePhoto? _previewPhoto;
 
   @override
   void initState() {
@@ -51,6 +55,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       _drinking = profile?.drinkingPreference ?? 'SOCIAL';
       _smoking = profile?.smokingPreference ?? 'NO';
       _music = profile?.musicPreference ?? 'ANY';
+      _previewPhoto = me.profilePhotos.primaryOrFirst;
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -92,19 +97,23 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     final x = await pick.pickImage(source: ImageSource.gallery, maxWidth: 1600);
     if (x == null) return;
     final bytes = await x.readAsBytes();
+    setState(() => _uploadingPhoto = true);
     try {
-      await ref.read(profileRepositoryProvider).uploadPhoto(bytes, x.name);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Photo uploaded')),
-        );
-      }
+      final uploaded =
+          await ref.read(profileRepositoryProvider).uploadPhoto(bytes, x.name);
+      if (!mounted) return;
+      setState(() => _previewPhoto = uploaded);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Photo uploaded')),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(formatApiError(e))),
         );
       }
+    } finally {
+      if (mounted) setState(() => _uploadingPhoto = false);
     }
   }
 
@@ -119,9 +128,17 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               child: ListView(
               padding: const EdgeInsets.all(20),
               children: [
+                ProfilePhotoSlot(photo: _previewPhoto),
+                const SizedBox(height: 12),
                 FilledButton.tonal(
-                  onPressed: _pickPhoto,
-                  child: const Text('Add profile photo'),
+                  onPressed: _uploadingPhoto ? null : _pickPhoto,
+                  child: Text(
+                    _uploadingPhoto
+                        ? 'Uploading…'
+                        : (_previewPhoto == null
+                            ? 'Add profile photo'
+                            : 'Change profile photo'),
+                  ),
                 ),
                 const SizedBox(height: 20),
                 TextFormField(

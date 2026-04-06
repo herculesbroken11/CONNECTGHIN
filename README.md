@@ -84,6 +84,17 @@ Run with your API URL (Android emulator often uses `10.0.2.2`; debug builds defa
 flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3000/api/v1
 ```
 
+**If `10.0.2.2` times out** (API works in a desktop browser but not from the emulator): allow **TCP 3000** through Windows Firewall, ensure the API listens on **`0.0.0.0`**, try your PC’s **LAN IPv4** in `API_BASE_URL`, or use **ADB reverse** so the emulator’s `127.0.0.1:3000` maps to the host:
+
+```bash
+adb -s emulator-5556 reverse tcp:3000 tcp:3000
+flutter run -d emulator-5556 --dart-define=API_BASE_URL=http://127.0.0.1:3000/api/v1
+```
+
+(Replace `emulator-5556` with `adb devices` id.) **Windows one-liner** from `apps/mobile-flutter`: run `tool\run_android_with_adb_reverse.cmd` (optional first arg = device id). That runs `adb reverse` then `flutter run` with `127.0.0.1:3000/api/v1`. Re-run reverse after restarting the emulator. Many LDPlayer setups work fine with the default `10.0.2.2` when the host path and firewall are correct.
+
+The Android app includes `res/xml/network_security_config.xml` so **cleartext HTTP** to `10.0.2.2` / `127.0.0.1` is explicitly allowed (see [Android emulator networking](https://developer.android.com/studio/run/emulator-networking) and [this local-dev walkthrough](https://medium.com/livefront/how-to-connect-your-android-emulator-to-a-local-web-service-47c380bff350)). A **timeout** usually means the TCP connection never reached the host (firewall, wrong IP, or API not listening on `0.0.0.0`), not cleartext policy—cleartext blocks often surface as immediate `CLEARTEXT not permitted` errors instead.
+
 **Release / production:** `API_BASE_URL` is required (no emulator default). Use HTTPS for the live API, for example:
 
 ```bash

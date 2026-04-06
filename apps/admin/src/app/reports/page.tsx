@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { apiJson } from '@/lib/api';
+import { AdminShell } from '@/components/admin-shell';
 
 type Report = {
   id: string;
@@ -38,21 +38,12 @@ export default function ReportsPage() {
   }
 
   return (
-    <main className="min-h-screen p-8 text-slate-100">
-      <div className="mx-auto max-w-5xl">
-        <div className="mb-6 flex justify-between">
-          <h1 className="text-2xl font-semibold">Reports</h1>
-          <Link href="/dashboard" className="text-emerald-400 hover:underline">
-            Dashboard
-          </Link>
-        </div>
+    <AdminShell title="Reports" subtitle="Review and resolve user reports">
+      <div className="mx-auto w-full max-w-5xl">
         {err && <p className="text-red-400">{err}</p>}
         <div className="space-y-4">
           {rows.map((r) => (
-            <div
-              key={r.id}
-              className="rounded-xl border border-slate-800 bg-slate-900/60 p-4"
-            >
+            <div key={r.id} className="admin-panel p-4">
               <div className="text-sm text-slate-400">
                 From <span className="text-slate-200">{r.reportedByUser.username}</span>{' '}
                 → target{' '}
@@ -66,21 +57,21 @@ export default function ReportsPage() {
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"
-                  className="rounded bg-slate-700 px-3 py-1 text-xs"
+                  className="admin-button px-3 py-1 text-xs"
                   onClick={() => review(r.id, 'REVIEWED')}
                 >
                   Mark reviewed
                 </button>
                 <button
                   type="button"
-                  className="rounded bg-emerald-900 px-3 py-1 text-xs"
+                  className="admin-button admin-button-primary px-3 py-1 text-xs"
                   onClick={() => review(r.id, 'RESOLVED')}
                 >
                   Resolve
                 </button>
                 <button
                   type="button"
-                  className="rounded bg-slate-800 px-3 py-1 text-xs"
+                  className="admin-button px-3 py-1 text-xs"
                   onClick={() => review(r.id, 'DISMISSED')}
                 >
                   Dismiss
@@ -90,6 +81,6 @@ export default function ReportsPage() {
           ))}
         </div>
       </div>
-    </main>
+    </AdminShell>
   );
 }

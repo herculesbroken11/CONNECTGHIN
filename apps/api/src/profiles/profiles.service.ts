@@ -81,19 +81,18 @@ export class ProfilesService {
       file.mimetype,
     );
     const count = await this.prisma.profilePhoto.count({ where: { userId } });
-    const isPrimary = count === 0;
-    if (isPrimary) {
-      await this.prisma.profilePhoto.updateMany({
-        where: { userId },
-        data: { isPrimary: false },
-      });
-    }
+    // New upload is always the primary avatar so "change photo" persists for
+    // clients that read primaryOrFirst / isPrimary (second+ uploads were non-primary before).
+    await this.prisma.profilePhoto.updateMany({
+      where: { userId },
+      data: { isPrimary: false },
+    });
     const photo = await this.prisma.profilePhoto.create({
       data: {
         userId,
         imageUrl: path,
         sortOrder: count,
-        isPrimary,
+        isPrimary: true,
       },
     });
     await this.prisma.profile.update({

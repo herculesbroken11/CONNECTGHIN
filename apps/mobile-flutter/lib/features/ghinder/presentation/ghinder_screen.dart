@@ -4,6 +4,7 @@ import 'package:connectghin/core/util/api_error_message.dart';
 import 'package:connectghin/core/util/media_url.dart';
 import 'package:connectghin/features/app/data/app_repositories_provider.dart';
 import 'package:connectghin/features/discovery/domain/discovery_candidate.dart';
+import 'package:connectghin/features/profile/domain/user_profile_models.dart';
 
 class GhinderScreen extends ConsumerStatefulWidget {
   const GhinderScreen({super.key});
@@ -130,6 +131,7 @@ class _SwipeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final profile = candidate.profile;
     final photos = candidate.photos;
+    final primary = photos.primaryOrFirst;
     final name =
         profile?.displayName ?? candidate.username ?? 'Golfer';
     final verified = profile?.isGHINVerified ?? false;
@@ -140,9 +142,9 @@ class _SwipeCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
-            child: photos.isNotEmpty
+            child: primary != null
                 ? Image.network(
-                    resolveMediaUrl(photos.first.imageUrl),
+                    resolveMediaUrl(primary.imageUrl),
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => const ColoredBox(
                       color: Color(0xFF1B4332),

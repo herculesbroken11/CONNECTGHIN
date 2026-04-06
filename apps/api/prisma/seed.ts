@@ -34,7 +34,11 @@ async function main() {
       },
     },
     update: {
+      passwordHash: hash,
       role: UserRole.ADMIN,
+      isActive: true,
+      isSuspended: false,
+      suspensionReason: null,
     },
   });
 

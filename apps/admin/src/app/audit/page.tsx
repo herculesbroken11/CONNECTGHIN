@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { apiJson } from '@/lib/api';
+import { AdminShell } from '@/components/admin-shell';
 
 type Log = {
   id: string;
@@ -23,22 +23,13 @@ export default function AuditPage() {
   }, []);
 
   return (
-    <main className="min-h-screen p-8 text-slate-100">
-      <div className="mx-auto max-w-5xl">
-        <div className="mb-6 flex justify-between">
-          <h1 className="text-2xl font-semibold">Audit log</h1>
-          <Link href="/dashboard" className="text-emerald-400 hover:underline">
-            Dashboard
-          </Link>
-        </div>
+    <AdminShell title="Audit Log" subtitle="Recent admin actions">
+      <div className="mx-auto w-full max-w-5xl">
         {err && <p className="text-red-400">{err}</p>}
         <ul className="space-y-2 text-sm">
           {rows.map((r) => (
-            <li
-              key={r.id}
-              className="rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2"
-            >
-              <span className="text-emerald-400">{r.actionType}</span>
+            <li key={r.id} className="admin-panel-muted px-3 py-2.5">
+              <span className="text-sky-300">{r.actionType}</span>
               {r.targetUserId && (
                 <span className="text-slate-500"> → {r.targetUserId}</span>
               )}
@@ -52,6 +43,6 @@ export default function AuditPage() {
           ))}
         </ul>
       </div>
-    </main>
+    </AdminShell>
   );
 }

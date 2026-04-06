@@ -6,7 +6,7 @@ class MatchesRepository {
   final Dio _dio;
 
   Future<List<MatchListItem>> listMatches() async {
-    final res = await _dio.get<Map<String, dynamic>>('/matches');
+    final res = await _dio.get<Map<String, dynamic>>('matches');
     final items = res.data?['items'] as List<dynamic>? ?? [];
     return items
         .map(

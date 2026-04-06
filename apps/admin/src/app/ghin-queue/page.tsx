@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { apiJson } from '@/lib/api';
+import { AdminShell } from '@/components/admin-shell';
 
 type Row = {
   id: string;
@@ -22,31 +23,25 @@ export default function GhinQueuePage() {
   }, []);
 
   return (
-    <main className="min-h-screen p-8 text-slate-100">
-      <div className="mx-auto max-w-4xl">
-        <div className="mb-6 flex justify-between">
-          <h1 className="text-2xl font-semibold">GHIN verification queue</h1>
-          <Link href="/dashboard" className="text-emerald-400 hover:underline">
-            Dashboard
-          </Link>
-        </div>
+    <AdminShell
+      title="GHIN Verification Queue"
+      subtitle="Users pending manual GHIN approval"
+    >
+      <div className="mx-auto w-full max-w-4xl">
         <p className="mb-4 text-slate-400">
           Users with profiles not yet marked GHIN-verified. Verify externally in GHIN, then approve here.
         </p>
         {err && <p className="text-red-400">{err}</p>}
         <ul className="space-y-2">
           {rows.map((r) => (
-            <li
-              key={r.id}
-              className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900/60 px-4 py-3"
-            >
+            <li key={r.id} className="admin-panel flex items-center justify-between px-4 py-3">
               <div>
                 <div className="font-medium">{r.profile?.displayName ?? r.username}</div>
                 <div className="text-sm text-slate-500">{r.email}</div>
               </div>
               <Link
                 href={`/users/${r.id}`}
-                className="text-sm text-emerald-400 hover:underline"
+                className="text-sm text-sky-300 hover:underline"
               >
                 Open →
               </Link>
@@ -57,6 +52,6 @@ export default function GhinQueuePage() {
           <p className="mt-8 text-slate-500">Queue is empty.</p>
         )}
       </div>
-    </main>
+    </AdminShell>
   );
 }

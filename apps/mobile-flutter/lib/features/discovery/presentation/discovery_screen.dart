@@ -4,6 +4,7 @@ import 'package:connectghin/core/util/api_error_message.dart';
 import 'package:connectghin/core/util/media_url.dart';
 import 'package:connectghin/features/app/data/app_repositories_provider.dart';
 import 'package:connectghin/features/discovery/domain/discovery_candidate.dart';
+import 'package:connectghin/features/profile/domain/user_profile_models.dart';
 
 class DiscoveryScreen extends ConsumerStatefulWidget {
   const DiscoveryScreen({super.key});
@@ -83,15 +84,16 @@ class _DiscoveryScreenState extends ConsumerState<DiscoveryScreen> {
                           final it = _items[i];
                           final profile = it.profile;
                           final photos = it.photos;
+                          final thumb = photos.primaryOrFirst;
                           final verified = profile?.isGHINVerified == true;
                           return ListTile(
                             leading: CircleAvatar(
-                              backgroundImage: photos.isNotEmpty
+                              backgroundImage: thumb != null
                                   ? NetworkImage(
-                                      resolveMediaUrl(photos.first.imageUrl),
+                                      resolveMediaUrl(thumb.imageUrl),
                                     )
                                   : null,
-                              child: photos.isEmpty ? const Icon(Icons.person) : null,
+                              child: thumb == null ? const Icon(Icons.person) : null,
                             ),
                             title: Text(
                               profile?.displayName ?? it.username ?? '',

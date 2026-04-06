@@ -44,6 +44,8 @@ flutter {
 }
 
 dependencies {
-    // FlutterView → WindowInfoTracker; missing sidecar classes on some emulators (e.g. LDPlayer).
+    // FlutterView → WindowInfoTracker; some emulators (e.g. LDPlayer) miss sidecar stubs without core + java API.
     implementation("androidx.window:window:1.3.0")
+    implementation("androidx.window:window-core:1.3.0")
+    implementation("androidx.window:window-java:1.3.0")
 }

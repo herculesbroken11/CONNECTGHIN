@@ -5,6 +5,17 @@ import 'package:connectghin/core/config/app_env.dart';
 const _kAccess = 'cg_access_token';
 const _kRefresh = 'cg_refresh_token';
 
+/// Dio merges paths with [baseUrl] using [Uri.resolve]. If the request path
+/// starts with `/`, it replaces the **entire** path of the base URL, so
+/// `http://host:3000/api/v1` + `/auth/register` becomes `http://host:3000/auth/register`
+/// and drops `api/v1`. Always use a trailing slash on the base and relative
+/// paths without a leading slash.
+String _dioBaseUrl(String raw) {
+  final t = raw.trim();
+  if (t.isEmpty) return t;
+  return t.endsWith('/') ? t : '$t/';
+}
+
 class TokenStore {
   TokenStore({FlutterSecureStorage? storage})
       : _storage = storage ?? const FlutterSecureStorage();
@@ -41,15 +52,16 @@ class _RefreshCoordinator {
 }
 
 bool _isPublicAuthPath(String path) {
+  final p = path.startsWith('/') ? path.substring(1) : path;
   const suffixes = [
-    '/auth/login',
-    '/auth/register',
-    '/auth/refresh',
-    '/auth/forgot-password',
-    '/auth/reset-password',
+    'auth/login',
+    'auth/register',
+    'auth/refresh',
+    'auth/forgot-password',
+    'auth/reset-password',
   ];
   for (final s in suffixes) {
-    if (path == s || path.endsWith(s)) return true;
+    if (p == s || p.endsWith('/$s')) return true;
   }
   return false;
 }
@@ -59,7 +71,7 @@ Future<bool> _tryRefresh(TokenStore tokens, Dio plain) async {
   if (refresh == null || refresh.isEmpty) return false;
   try {
     final res = await plain.post<Map<String, dynamic>>(
-      '/auth/refresh',
+      'auth/refresh',
       data: {'refreshToken': refresh},
     );
     final access = res.data?['accessToken'] as String?;
@@ -77,9 +89,10 @@ Dio createDio(
   void Function()? onSessionExpired,
   void Function()? onAccessTokenRefreshed,
 }) {
+  final base = _dioBaseUrl(AppEnv.apiBaseUrl);
   final plain = Dio(
     BaseOptions(
-      baseUrl: AppEnv.apiBaseUrl,
+      baseUrl: base,
       connectTimeout: const Duration(seconds: 15),
       receiveTimeout: const Duration(seconds: 30),
       headers: {
@@ -91,7 +104,7 @@ Dio createDio(
 
   final dio = Dio(
     BaseOptions(
-      baseUrl: AppEnv.apiBaseUrl,
+      baseUrl: base,
       connectTimeout: const Duration(seconds: 15),
       receiveTimeout: const Duration(seconds: 30),
       headers: {'Accept': 'application/json'},

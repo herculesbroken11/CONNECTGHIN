@@ -10,7 +10,7 @@ class AuthRepository {
 
   Future<void> register(RegisterRequestDto dto) async {
     final res = await _dio.post<Map<String, dynamic>>(
-      '/auth/register',
+      'auth/register',
       data: dto.toJson(),
     );
     await _saveTokensFromResponse(res.data);
@@ -18,23 +18,23 @@ class AuthRepository {
 
   Future<void> login(LoginRequestDto dto) async {
     final res = await _dio.post<Map<String, dynamic>>(
-      '/auth/login',
+      'auth/login',
       data: dto.toJson(),
     );
     await _saveTokensFromResponse(res.data);
   }
 
   Future<void> forgotPassword(ForgotPasswordRequestDto dto) async {
-    await _dio.post('/auth/forgot-password', data: dto.toJson());
+    await _dio.post('auth/forgot-password', data: dto.toJson());
   }
 
   Future<void> resetPassword(ResetPasswordRequestDto dto) async {
-    await _dio.post('/auth/reset-password', data: dto.toJson());
+    await _dio.post('auth/reset-password', data: dto.toJson());
   }
 
   Future<void> logout() async {
     try {
-      await _dio.post('/auth/logout');
+      await _dio.post('auth/logout');
     } catch (_) {
       // Best effort on network/API errors.
     } finally {

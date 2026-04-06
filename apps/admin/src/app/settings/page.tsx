@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { apiJson } from '@/lib/api';
+import { AdminShell } from '@/components/admin-shell';
 
 type Setting = { id: string; key: string; valueJson: string };
 
@@ -41,14 +41,8 @@ export default function AppSettingsPage() {
   }
 
   return (
-    <main className="min-h-screen p-8 text-slate-100">
-      <div className="mx-auto max-w-3xl">
-        <div className="mb-6 flex justify-between">
-          <h1 className="text-2xl font-semibold">App settings</h1>
-          <Link href="/dashboard" className="text-emerald-400 hover:underline">
-            Dashboard
-          </Link>
-        </div>
+    <AdminShell title="App Settings" subtitle="JSON-backed runtime configuration">
+      <div className="mx-auto w-full max-w-3xl">
         <p className="mb-4 text-slate-400">
           Values are JSON. Keys match seed defaults:{' '}
           <code className="text-slate-300">free_daily_swipe_limit</code>,{' '}
@@ -57,13 +51,10 @@ export default function AppSettingsPage() {
         {err && <p className="text-red-400">{err}</p>}
         <div className="space-y-4">
           {rows.map((r) => (
-            <div
-              key={r.id}
-              className="rounded-lg border border-slate-800 bg-slate-900/60 p-4"
-            >
-              <div className="font-mono text-sm text-emerald-400">{r.key}</div>
+            <div key={r.id} className="admin-panel p-4">
+              <div className="font-mono text-sm text-sky-300">{r.key}</div>
               <textarea
-                className="mt-2 w-full rounded border border-slate-700 bg-slate-950 p-2 font-mono text-sm"
+                className="admin-input mt-2 font-mono"
                 rows={2}
                 defaultValue={r.valueJson}
                 onChange={(e) =>
@@ -72,7 +63,7 @@ export default function AppSettingsPage() {
               />
               <button
                 type="button"
-                className="mt-2 rounded bg-emerald-800 px-3 py-1 text-sm"
+                className="admin-button admin-button-primary mt-2 text-sm"
                 onClick={() => save(r.key, r.valueJson)}
               >
                 Save
@@ -81,6 +72,6 @@ export default function AppSettingsPage() {
           ))}
         </div>
       </div>
-    </main>
+    </AdminShell>
   );
 }

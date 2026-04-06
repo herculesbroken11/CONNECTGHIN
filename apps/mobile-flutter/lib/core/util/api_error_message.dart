@@ -8,9 +8,10 @@ String formatApiError(Object error) {
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
         return 'Could not reach the API at ${AppEnv.apiBaseUrl} (timed out). '
-            'Start the backend (e.g. npm run api:dev) and allow port 3000 through Windows Firewall. '
-            'On Android emulators (including LDPlayer), the host machine is http://10.0.2.2:3000 — '
-            'do not use localhost from the app. If it still fails, try your PC’s LAN IP with --dart-define=API_BASE_URL=...';
+            'Start the backend (npm run api:dev), confirm it listens on 0.0.0.0:3000, '
+            'and allow TCP 3000 on Windows Firewall (Private). '
+            'If 10.0.2.2 still fails: try your PC LAN IP in --dart-define=API_BASE_URL=..., '
+            'or adb reverse tcp:3000 tcp:3000 with http://127.0.0.1:3000/api/v1.';
       case DioExceptionType.connectionError:
         return 'No route to the API at ${AppEnv.apiBaseUrl}. '
             'Check the URL and that the server is running.';

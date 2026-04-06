@@ -13,7 +13,16 @@ export const REDIS_CLIENT = Symbol('REDIS_CLIENT');
       useFactory: (config: ConfigService): Redis | null => {
         const url = config.get<string>('REDIS_URL');
         if (!url?.length) return null;
-        return new Redis(url, { maxRetriesPerRequest: 3, lazyConnect: true });
+        const client = new Redis(url, {
+          lazyConnect: true,
+          maxRetriesPerRequest: 3,
+          // No Redis on host: stop reconnect spam; throttler falls back to memory.
+          retryStrategy: () => null,
+        });
+        client.on('error', () => {
+          /* handled in RedisThrottlerStorage.increment; avoids unhandled 'error' events */
+        });
+        return client;
       },
       inject: [ConfigService],
     },

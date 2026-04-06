@@ -17,7 +17,7 @@ class DiscoveryRepository {
     if (ageMax != null) q['ageMax'] = ageMax;
     if (distanceKm != null) q['distance'] = distanceKm;
     final res = await _dio.get<Map<String, dynamic>>(
-      '/discovery/candidates',
+      'discovery/candidates',
       queryParameters: q,
     );
     return DiscoveryCandidatesPage.fromJson(

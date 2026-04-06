@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { apiJson } from '@/lib/api';
+import { AdminShell } from '@/components/admin-shell';
 
 export default function UserDetailPage() {
   const params = useParams();
@@ -52,12 +53,17 @@ export default function UserDetailPage() {
   const profile = user?.profile as Record<string, unknown> | undefined;
 
   return (
-    <main className="min-h-screen p-8 text-slate-100">
-      <div className="mx-auto max-w-2xl">
-        <Link href="/users" className="text-sm text-emerald-400 hover:underline">
+    <AdminShell
+      title={(user?.username as string) ?? id}
+      subtitle={(user?.email as string) ?? 'User details'}
+      headerRight={
+        <Link href="/users" className="text-sm text-sky-300 hover:underline">
           ← Users
         </Link>
-        <h1 className="mt-4 text-2xl font-semibold">
+      }
+    >
+      <div className="admin-panel mx-auto w-full max-w-2xl p-5">
+        <h1 className="text-2xl font-semibold">
           {(user?.username as string) ?? id}
         </h1>
         {err && <p className="mt-2 text-red-400">{err}</p>}
@@ -69,34 +75,34 @@ export default function UserDetailPage() {
         <div className="mt-8 flex flex-wrap gap-2">
           <button
             type="button"
-            className="rounded-lg bg-amber-700 px-4 py-2 text-sm"
+            className="admin-button border-amber-600/50 bg-amber-700/80 text-sm md:px-4"
             onClick={() => act('/suspend', 'PATCH', { reason: 'Admin suspend' })}
           >
             Suspend
           </button>
           <button
             type="button"
-            className="rounded-lg bg-red-800 px-4 py-2 text-sm"
+            className="admin-button border-red-700/50 bg-red-800/80 text-sm md:px-4"
             onClick={() => act('/ban', 'PATCH', { reason: 'Admin ban' })}
           >
             Ban
           </button>
           <button
             type="button"
-            className="rounded-lg bg-slate-700 px-4 py-2 text-sm"
+            className="admin-button text-sm md:px-4"
             onClick={() => act('/restore', 'PATCH')}
           >
             Restore
           </button>
           <button
             type="button"
-            className="rounded-lg bg-emerald-800 px-4 py-2 text-sm"
+            className="admin-button admin-button-primary text-sm md:px-4"
             onClick={() => act('/verify-ghin', 'PATCH')}
           >
             Verify GHIN
           </button>
         </div>
       </div>
-    </main>
+    </AdminShell>
   );
 }

@@ -80,6 +80,7 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
     final me = _me;
     final profile = me?.profile;
     final photos = me?.profilePhotos ?? [];
+    final primaryPhoto = photos.primaryOrFirst;
     final verified = profile?.isGHINVerified == true;
 
     return Scaffold(
@@ -88,7 +89,10 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.edit_outlined),
-            onPressed: () => context.push('/profile/edit'),
+            onPressed: () async {
+              await context.push('/profile/edit');
+              if (mounted) await _load();
+            },
           ),
         ],
       ),
@@ -97,14 +101,25 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            if (photos.isNotEmpty)
+            if (primaryPhoto != null)
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: AspectRatio(
                   aspectRatio: 4 / 3,
                   child: Image.network(
-                    resolveMediaUrl(photos.first.imageUrl),
+                    resolveMediaUrl(primaryPhoto.imageUrl),
+                    key: ValueKey(primaryPhoto.imageUrl),
                     fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => ColoredBox(
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      child: Center(
+                        child: Icon(
+                          Icons.broken_image_outlined,
+                          size: 48,
+                          color: Theme.of(context).colorScheme.outline,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),

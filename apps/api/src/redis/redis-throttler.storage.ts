@@ -17,6 +17,8 @@ export class RedisThrottlerStorage
 {
   private readonly logger = new Logger(RedisThrottlerStorage.name);
   private readonly memory = new Map<string, MemEntry>();
+  /** After first Redis failure, use memory only (avoids log spam when Redis is down). */
+  private redisThrottlerDown = false;
 
   constructor(@Inject(REDIS_CLIENT) private readonly redis: Redis | null) {}
 
@@ -28,7 +30,7 @@ export class RedisThrottlerStorage
     throttlerName: string,
   ): Promise<ThrottlerStorageRecord> {
     const fullKey = `${throttlerName}:${key}`;
-    if (!this.redis) {
+    if (!this.redis || this.redisThrottlerDown) {
       return this.memoryIncrement(fullKey, ttl, limit, blockDuration);
     }
 
@@ -72,9 +74,13 @@ export class RedisThrottlerStorage
         timeToBlockExpire: 0,
       };
     } catch (e) {
-      this.logger.warn(
-        `Redis throttler failed, using memory: ${(e as Error).message}`,
-      );
+      const msg = (e as Error).message;
+      if (!this.redisThrottlerDown) {
+        this.redisThrottlerDown = true;
+        this.logger.warn(
+          `Redis throttler unavailable (using in-memory limits until restart): ${msg}`,
+        );
+      }
       return this.memoryIncrement(fullKey, ttl, limit, blockDuration);
     }
   }

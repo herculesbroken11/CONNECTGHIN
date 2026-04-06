@@ -24,6 +24,17 @@ class ProfilePhoto {
   }
 }
 
+extension ProfilePhotoListX on List<ProfilePhoto> {
+  /// Primary photo if set, otherwise first in list order from the API.
+  ProfilePhoto? get primaryOrFirst {
+    if (isEmpty) return null;
+    for (final p in this) {
+      if (p.isPrimary) return p;
+    }
+    return first;
+  }
+}
+
 class UserProfile {
   const UserProfile({
     required this.id,

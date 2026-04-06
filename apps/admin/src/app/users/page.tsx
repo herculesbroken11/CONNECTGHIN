@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { apiJson } from '@/lib/api';
+import { AdminShell } from '@/components/admin-shell';
 
 type UserRow = {
   id: string;
@@ -30,25 +31,19 @@ export default function UsersPage() {
   }, [search]);
 
   return (
-    <main className="min-h-screen p-8 text-slate-100">
-      <div className="mx-auto max-w-5xl">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-          <h1 className="text-2xl font-semibold">Users</h1>
-          <Link href="/dashboard" className="text-sm text-emerald-400 hover:underline">
-            ← Dashboard
-          </Link>
-        </div>
+    <AdminShell title="Users" subtitle="Search and moderate user accounts">
+      <div className="mx-auto w-full max-w-5xl">
         <input
           type="search"
           placeholder="Search email, username, name…"
-          className="mb-4 w-full max-w-md rounded-lg border border-slate-700 bg-slate-900 px-3 py-2"
+          className="admin-input mb-4 max-w-md"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
         {err && <p className="text-red-400">{err}</p>}
-        <div className="overflow-x-auto rounded-xl border border-slate-800">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-900/80 text-slate-400">
+        <div className="admin-table-wrap">
+          <table className="admin-table">
+            <thead>
               <tr>
                 <th className="p-3">User</th>
                 <th className="p-3">Membership</th>
@@ -59,7 +54,7 @@ export default function UsersPage() {
             </thead>
             <tbody>
               {rows.map((u) => (
-                <tr key={u.id} className="border-t border-slate-800">
+                <tr key={u.id}>
                   <td className="p-3">
                     <div className="font-medium">{u.username}</div>
                     <div className="text-slate-500">{u.email}</div>
@@ -95,6 +90,6 @@ export default function UsersPage() {
           </table>
         </div>
       </div>
-    </main>
+    </AdminShell>
   );
 }

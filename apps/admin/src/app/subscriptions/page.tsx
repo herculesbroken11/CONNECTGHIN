@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { apiJson } from '@/lib/api';
+import { AdminShell } from '@/components/admin-shell';
 
 type Sub = {
   id: string;
@@ -22,18 +22,12 @@ export default function SubscriptionsPage() {
   }, []);
 
   return (
-    <main className="min-h-screen p-8 text-slate-100">
-      <div className="mx-auto max-w-5xl">
-        <div className="mb-6 flex justify-between">
-          <h1 className="text-2xl font-semibold">Subscriptions</h1>
-          <Link href="/dashboard" className="text-emerald-400 hover:underline">
-            Dashboard
-          </Link>
-        </div>
+    <AdminShell title="Subscriptions" subtitle="Plan and status overview">
+      <div className="mx-auto w-full max-w-5xl">
         {err && <p className="text-red-400">{err}</p>}
-        <div className="overflow-x-auto rounded-xl border border-slate-800">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-900/80 text-slate-400">
+        <div className="admin-table-wrap">
+          <table className="admin-table min-w-[640px]">
+            <thead>
               <tr>
                 <th className="p-3">User</th>
                 <th className="p-3">Plan</th>
@@ -42,7 +36,7 @@ export default function SubscriptionsPage() {
             </thead>
             <tbody>
               {rows.map((s) => (
-                <tr key={s.id} className="border-t border-slate-800">
+                <tr key={s.id}>
                   <td className="p-3">
                     <div>{s.user.username}</div>
                     <div className="text-slate-500">{s.user.email}</div>
@@ -55,6 +49,6 @@ export default function SubscriptionsPage() {
           </table>
         </div>
       </div>
-    </main>
+    </AdminShell>
   );
 }

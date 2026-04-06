@@ -6,7 +6,7 @@ class MessagingRepository {
   final Dio _dio;
 
   Future<List<ConversationItem>> conversations() async {
-    final res = await _dio.get<Map<String, dynamic>>('/conversations');
+    final res = await _dio.get<Map<String, dynamic>>('conversations');
     return ConversationsPage.fromJson(
       Map<String, dynamic>.from(res.data ?? {}),
     ).items;
@@ -14,7 +14,7 @@ class MessagingRepository {
 
   Future<ConversationStartResult> startConversation(String otherUserId) async {
     final res = await _dio.post<Map<String, dynamic>>(
-      '/conversations/start',
+      'conversations/start',
       data: {'otherUserId': otherUserId},
     );
     return ConversationStartResult.fromJson(
@@ -27,7 +27,7 @@ class MessagingRepository {
     String? cursor,
   }) async {
     final res = await _dio.get<Map<String, dynamic>>(
-      '/conversations/$conversationId/messages',
+      'conversations/$conversationId/messages',
       queryParameters: {if (cursor != null) 'cursor': cursor},
     );
     return MessagesPage.fromJson(
@@ -36,12 +36,12 @@ class MessagingRepository {
   }
 
   Future<void> sendMessage(String conversationId, String body) async {
-    await _dio.post('/conversations/$conversationId/messages', data: {
+    await _dio.post('conversations/$conversationId/messages', data: {
       'body': body,
     });
   }
 
   Future<void> markRead(String conversationId) async {
-    await _dio.patch('/conversations/$conversationId/read');
+    await _dio.patch('conversations/$conversationId/read');
   }
 }

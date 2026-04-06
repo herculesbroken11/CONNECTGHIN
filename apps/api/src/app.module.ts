@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { EventEmitterModule } from '@nestjs/event-emitter';
@@ -28,6 +28,7 @@ import { PushModule } from './push/push.module';
 import { MembershipModule } from './membership/membership.module';
 import { ChatModule } from './chat/chat.module';
 import { RedisModule } from './redis/redis.module';
+import { HttpRequestLoggerMiddleware } from './common/middleware/http-request-logger.middleware';
 
 @Module({
   imports: [
@@ -74,4 +75,10 @@ import { RedisModule } from './redis/redis.module';
     { provide: APP_GUARD, useClass: JwtAuthGuard },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(HttpRequestLoggerMiddleware)
+      .forRoutes({ path: '*', method: RequestMethod.ALL });
+  }
+}

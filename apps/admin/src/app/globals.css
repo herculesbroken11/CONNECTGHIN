@@ -4,4 +4,59 @@
 
 body {
   @apply bg-slate-950 text-slate-100 antialiased;
+  background:
+    radial-gradient(1200px 500px at 5% -10%, rgba(37, 99, 235, 0.2), transparent 60%),
+    radial-gradient(900px 420px at 95% 0%, rgba(14, 165, 233, 0.14), transparent 60%),
+    #020617;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #334155 #0f172a;
+}
+
+@layer components {
+  .admin-panel {
+    @apply rounded-2xl border border-slate-800/90 bg-slate-900/55 shadow-[0_10px_35px_-16px_rgba(0,0,0,0.8)];
+  }
+
+  .admin-panel-muted {
+    @apply rounded-xl border border-slate-800/80 bg-slate-900/35;
+  }
+
+  .admin-input {
+    @apply w-full rounded-xl border border-slate-700/80 bg-slate-950/80 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-sky-500/60 focus:outline-none focus:ring-2 focus:ring-sky-500/20;
+  }
+
+  .admin-button {
+    @apply inline-flex items-center justify-center rounded-xl border border-slate-700/80 bg-slate-800/80 px-3 py-2 text-sm font-medium text-slate-100 transition hover:bg-slate-700/90;
+  }
+
+  .admin-button-primary {
+    @apply border-sky-600/40 bg-sky-600/85 text-white hover:bg-sky-500;
+  }
+
+  .admin-table-wrap {
+    @apply overflow-x-auto rounded-2xl border border-slate-800/90 bg-slate-900/35;
+  }
+
+  .admin-table {
+    @apply min-w-[680px] w-full text-left text-sm;
+  }
+
+  .admin-table thead {
+    @apply bg-slate-900/70 text-slate-400;
+  }
+
+  .admin-table th {
+    @apply p-3 font-medium;
+  }
+
+  .admin-table td {
+    @apply p-3 text-slate-200;
+  }
+
+  .admin-table tbody tr {
+    @apply border-t border-slate-800/80;
+  }
 }

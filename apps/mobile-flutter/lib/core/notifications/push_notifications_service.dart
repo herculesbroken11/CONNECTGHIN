@@ -17,28 +17,39 @@ class PushNotificationsService {
 
   Future<void> ensureRegistered() async {
     if (_initialized) return;
-    _initialized = true;
 
     await _initializeFirebaseIfNeeded();
-
-    final messaging = FirebaseMessaging.instance;
-    await messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-      provisional: false,
-    );
-
-    final token = await messaging.getToken();
-    if (token != null && token.isNotEmpty) {
-      _currentToken = token;
-      await _registerToken(token);
+    if (Firebase.apps.isEmpty) {
+      // Missing/invalid google-services.json or init failed — do not call
+      // FirebaseMessaging (it requires a default app).
+      _initialized = true;
+      return;
     }
 
-    _tokenRefreshSub = messaging.onTokenRefresh.listen((newToken) async {
-      _currentToken = newToken;
-      await _registerToken(newToken);
-    });
+    try {
+      final messaging = FirebaseMessaging.instance;
+      await messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        provisional: false,
+      );
+
+      final token = await messaging.getToken();
+      if (token != null && token.isNotEmpty) {
+        _currentToken = token;
+        await _registerToken(token);
+      }
+
+      _tokenRefreshSub = messaging.onTokenRefresh.listen((newToken) async {
+        _currentToken = newToken;
+        await _registerToken(newToken);
+      });
+    } catch (e, st) {
+      debugPrint('PushNotificationsService: $e\n$st');
+    } finally {
+      _initialized = true;
+    }
   }
 
   Future<void> unregisterCurrentToken() async {
@@ -46,7 +57,7 @@ class PushNotificationsService {
     if (token == null || token.isEmpty) return;
     try {
       await _dio.delete(
-        '/devices/register-token',
+        'devices/register-token',
         queryParameters: {'token': token},
       );
     } catch (_) {
@@ -72,7 +83,7 @@ class PushNotificationsService {
   Future<void> _registerToken(String token) async {
     try {
       await _dio.post(
-        '/devices/register-token',
+        'devices/register-token',
         data: {
           'token': token,
           'platform': _platformValue(),
