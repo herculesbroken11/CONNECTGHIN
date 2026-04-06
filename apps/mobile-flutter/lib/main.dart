@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:connectghin/core/config/app_env.dart';
 import 'package:connectghin/core/notifications/push_notifications_service.dart';
 import 'package:connectghin/core/router/app_router.dart';
 import 'package:connectghin/core/theme/app_theme.dart';
@@ -8,6 +10,15 @@ import 'package:connectghin/features/auth/application/auth_session_controller.da
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  if (kReleaseMode) {
+    final base = AppEnv.apiBaseUrl.trim();
+    if (base.isEmpty) {
+      throw StateError(
+        'Release build: set API_BASE_URL via --dart-define (HTTPS in production). '
+        'Example: flutter build apk --dart-define=API_BASE_URL=https://api.example.com/api/v1',
+      );
+    }
+  }
   runApp(const ProviderScope(child: ConnectGHINApp()));
 }
 

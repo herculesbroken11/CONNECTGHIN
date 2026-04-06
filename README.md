@@ -78,10 +78,16 @@ cd apps/mobile-flutter
 flutter pub get
 ```
 
-Run with your API URL (Android emulator often uses `10.0.2.2`):
+Run with your API URL (Android emulator often uses `10.0.2.2`; debug builds default to that if you omit the define):
 
 ```bash
 flutter run --dart-define=API_BASE_URL=http://10.0.2.2:3000/api/v1
+```
+
+**Release / production:** `API_BASE_URL` is required (no emulator default). Use HTTPS for the live API, for example:
+
+```bash
+flutter build apk --dart-define=API_BASE_URL=https://api.yourdomain.com/api/v1
 ```
 
 Push notifications require Firebase configuration for your platform (`google-services.json` / `GoogleService-Info.plist` and `flutterfire` / `Firebase.initializeApp` setup as per Firebase docs).

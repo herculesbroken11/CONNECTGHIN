@@ -41,7 +41,8 @@ async function bootstrap() {
   });
 
   const port = config.get<number>('API_PORT', 3000);
-  await app.listen(port);
+  // Bind all interfaces so Android emulators (10.0.2.2 → host) can reach the API on Windows.
+  await app.listen(port, '0.0.0.0');
 }
 
 bootstrap();

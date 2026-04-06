@@ -42,3 +42,8 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // FlutterView → WindowInfoTracker; missing sidecar classes on some emulators (e.g. LDPlayer).
+    implementation("androidx.window:window:1.3.0")
+}
